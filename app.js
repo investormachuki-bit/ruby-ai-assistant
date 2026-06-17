@@ -70,17 +70,16 @@ if (leadMode && !leadData.phone) {
     leadData.phone = question;
 
     try {
-
-        const { data, error } = await supabaseClient
-            .from("leads")
-            .insert([
-                {
-                    name: leadData.name,
-                    phone: leadData.phone,
-                    source: "AI Assistant",
-                    status: "new"
-                }
-            ]);
+const { data, error } = await supabaseClient
+    .from("leads")
+    .insert([
+        {
+            organization_id: "b2f35575-ff3f-4be4-85b3-c5ca90c35213",
+            name: leadData.name,
+            phone: leadData.phone,
+            interest: "Music Lessons"
+        }
+    ]);
 
         if (error) {
 
