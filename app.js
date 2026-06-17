@@ -6,6 +6,8 @@ async function sendMessage() {
 
     try {
 
+        alert(typeof supabaseClient);
+
         const { data, error } = await supabaseClient
             .from("knowledge_base")
             .select("*");
@@ -16,8 +18,6 @@ async function sendMessage() {
         }
 
         alert("ROWS FOUND: " + data.length);
-
-        console.log(data);
 
     } catch (err) {
 
