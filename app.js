@@ -4,26 +4,21 @@ async function sendMessage() {
 
     try {
 
-        alert("SUPABASE_URL TYPE: " + typeof SUPABASE_URL);
+        alert("START");
 
-        alert("SUPABASE_ANON_KEY TYPE: " + typeof SUPABASE_ANON_KEY);
+        alert("CLIENT: " + typeof supabaseClient);
 
-        alert("CLIENT TYPE: " + typeof supabaseClient);
-
-        const { data, error } = await supabaseClient
+        const result = await supabaseClient
             .from("knowledge_base")
             .select("*");
 
-        if (error) {
-            alert("SUPABASE ERROR: " + error.message);
-            return;
-        }
+        alert("QUERY FINISHED");
 
-        alert("ROWS FOUND: " + data.length);
+        alert(JSON.stringify(result));
 
     } catch (err) {
 
-        alert("JS ERROR: " + err.message);
+        alert("ERROR: " + err.message);
 
     }
 
