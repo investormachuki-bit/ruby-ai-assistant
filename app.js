@@ -1,3 +1,4 @@
+alert("APP JS LOADED");
 async function sendMessage() {
 
     try {
