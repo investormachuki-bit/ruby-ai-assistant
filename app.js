@@ -1,3 +1,5 @@
+let leadMode = false;
+let leadData = {};
 const input = document.getElementById("message");
 const chat = document.getElementById("chat");
 
@@ -9,8 +11,7 @@ function addMessage(sender, message) {
     `;
     chat.scrollTop = chat.scrollHeight;
 }
-
-function sendMessage() {
+async function sendMessage() {
 
     const question = input.value.trim();
 
@@ -19,7 +20,83 @@ function sendMessage() {
     addMessage("You", question);
 
     const q = question.toLowerCase();
+    
+// LEAD CAPTURE
 
+if (
+    !leadMode &&
+    (
+        q.includes("join") ||
+        q.includes("register") ||
+        q.includes("enroll") ||
+        q.includes("admission") ||
+        q.includes("sign up") ||
+        q.includes("interested")
+    )
+) {
+
+    leadMode = true;
+
+    addMessage(
+        "Sauti Tamu AI",
+        "Great! What is your full name?"
+    );
+
+    input.value = "";
+
+    return;
+}
+
+// COLLECT NAME
+
+if (leadMode && !leadData.name) {
+
+    leadData.name = question;
+
+    addMessage(
+        "Sauti Tamu AI",
+        `Thank you ${question}. Please share your phone number.`
+    );
+
+    input.value = "";
+
+    return;
+}
+
+// COLLECT PHONE
+
+if (leadMode && !leadData.phone) {
+
+    leadData.phone = question;
+
+    try {
+
+        await supabaseClient
+            .from("leads")
+            .insert([
+                {
+                    name: leadData.name,
+                    phone: leadData.phone,
+                    source: "AI Assistant",
+                    status: "new"
+                }
+            ]);
+
+    } catch (err) {
+        console.log(err);
+    }
+
+    addMessage(
+        "Sauti Tamu AI",
+        `Thank you! Your details have been received.<br><br>
+        <a href="${TRIAL_LINK}" target="_blank">Book Trial Lesson</a>`
+    );
+
+    leadMode = false;
+    leadData = {};
+
+    return;
+}
     let answer = `
 Need help choosing a course?<br><br>
 
