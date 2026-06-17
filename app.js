@@ -78,4 +78,27 @@ If the answer is not found in the business information, politely tell the user t
     chat.innerHTML += `
         <p><b>Sauti Tamu AI:</b> ${answer}</p>
     `;
+    async function sendMessage() {
+
+    alert("1 - Function started");
+
+    const input = document.getElementById("message");
+    const question = input.value;
+
+    alert("2 - Got question");
+
+    const { data, error } = await supabaseClient
+        .from("knowledge_base")
+        .select("content");
+
+    alert("3 - Supabase finished");
+
+    if(error){
+        alert("SUPABASE ERROR: " + error.message);
+        return;
+    }
+
+    alert("4 - Knowledge loaded");
+
+}
 }
