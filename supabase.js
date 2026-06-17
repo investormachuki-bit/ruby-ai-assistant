@@ -1,4 +1,4 @@
 const supabaseClient = supabase.createClient(
-  SUPABASE_URL,
+  https://osnrnrgnegqpbiknsgit.supabase.co,
   SUPABASE_ANON_KEY
 );
