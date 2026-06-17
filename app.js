@@ -4,31 +4,6 @@ async function sendMessage() {
 
     try {
 
-        const { data, error } = await supabaseClient
-            .from("knowledge_base")
-            .select("content");
-
-        if (error) {
-            alert(error.message);
-            return;
-        }
-
-        let knowledge = "";
-
-        data.forEach(item => {
-            knowledge += item.content + "\n";
-        });
-
-        const prompt = `
-You are Sauti Tamu Music School AI Assistant.
-
-Business Information:
-${knowledge}
-
-Question:
-How long is the training?
-`;
-
         alert("SENDING TO GEMINI");
 
         const response = await fetch(
@@ -43,7 +18,7 @@ How long is the training?
                         {
                             parts: [
                                 {
-                                    text: prompt
+                                    text: "Say hello"
                                 }
                             ]
                         }
@@ -52,7 +27,7 @@ How long is the training?
             }
         );
 
-        alert("GEMINI RESPONDED");
+        alert("STATUS: " + response.status);
 
         const result = await response.json();
 
@@ -61,6 +36,8 @@ How long is the training?
     } catch (err) {
 
         alert("ERROR: " + err.message);
+
+        console.error(err);
 
     }
 
