@@ -1,41 +1,55 @@
 async function sendMessage() {
 
-    const input = document.getElementById("message");
-    const question = input.value;
+    try {
 
-    if (!question) return;
+        alert("1 - Function started");
 
-    const chat = document.getElementById("chat");
+        const input = document.getElementById("message");
+        const question = input.value.trim();
 
-    chat.innerHTML += `<p><b>You:</b> ${question}</p>`;
+        if (!question) {
+            alert("Question is empty");
+            return;
+        }
 
-    input.value = "";
-
-    // Get business knowledge from Supabase
-
-    const { data, error } = await supabaseClient
-        .from("knowledge_base")
-        .select("content");
-
-    if (error) {
+        const chat = document.getElementById("chat");
 
         chat.innerHTML += `
-            <p><b>System:</b> Failed to load knowledge base.</p>
+            <p><b>You:</b> ${question}</p>
         `;
 
-        return;
-    }
+        input.value = "";
 
-    let knowledge = "";
+        alert("2 - Getting knowledge base");
 
-    data.forEach(item => {
-        knowledge += item.content + "\n";
-    });
+        const { data, error } = await supabaseClient
+            .from("knowledge_base")
+            .select("content");
 
-    const prompt = `
+        alert("3 - Supabase returned");
+
+        if (error) {
+            alert("SUPABASE ERROR: " + error.message);
+
+            chat.innerHTML += `
+                <p><b>System:</b> ${error.message}</p>
+            `;
+
+            return;
+        }
+
+        let knowledge = "";
+
+        data.forEach(item => {
+            knowledge += item.content + "\n\n";
+        });
+
+        alert("4 - Knowledge loaded");
+
+        const prompt = `
 You are Sauti Tamu Music School AI Assistant.
 
-Use ONLY the information below when answering.
+Only answer using the information below.
 
 BUSINESS INFORMATION:
 
@@ -45,60 +59,57 @@ CUSTOMER QUESTION:
 
 ${question}
 
-If the answer is not found in the business information, politely tell the user to contact the school directly.
+If the answer is not available in the business information,
+politely ask the customer to contact the school.
 `;
 
-    const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-        {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                contents: [
-                    {
-                        parts: [
-                            {
-                                text: prompt
-                            }
-                        ]
-                    }
-                ]
-            })
-        }
-    );
+        alert("5 - Sending to Gemini");
 
-    const result = await response.json();
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    contents: [
+                        {
+                            parts: [
+                                {
+                                    text: prompt
+                                }
+                            ]
+                        }
+                    ]
+                })
+            }
+        );
 
-    const answer =
-        result?.candidates?.[0]?.content?.parts?.[0]?.text
-        || "Sorry, I could not generate a response.";
+        alert("6 - Gemini responded");
 
-    chat.innerHTML += `
-        <p><b>Sauti Tamu AI:</b> ${answer}</p>
-    `;
-    async function sendMessage() {
+        const result = await response.json();
 
-    alert("1 - Function started");
+        console.log(result);
 
-    const input = document.getElementById("message");
-    const question = input.value;
+        const answer =
+            result?.candidates?.[0]?.content?.parts?.[0]?.text
+            || "No response received from Gemini.";
 
-    alert("2 - Got question");
+        chat.innerHTML += `
+            <p><b>Sauti Tamu AI:</b> ${answer}</p>
+        `;
 
-    const { data, error } = await supabaseClient
-        .from("knowledge_base")
-        .select("content");
+        alert("7 - Finished");
 
-    alert("3 - Supabase finished");
+    } catch (err) {
 
-    if(error){
-        alert("SUPABASE ERROR: " + error.message);
-        return;
+        alert("ERROR: " + err.message);
+
+        document.getElementById("chat").innerHTML += `
+            <p><b>Error:</b> ${err.message}</p>
+        `;
+
+        console.error(err);
     }
-
-    alert("4 - Knowledge loaded");
-
-}
 }
