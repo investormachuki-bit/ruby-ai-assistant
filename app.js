@@ -274,7 +274,37 @@ We offer 3 lessons every week.<br><br>
 Fee: KES 12,850
 `;
     }
+    
+// FALLBACK - SAVE UNKNOWN QUESTIONS
 
+else {
+
+    try {
+
+        await supabaseClient
+            .from("unanswered_questions")
+            .insert([
+                {
+                    question: question
+                }
+            ]);
+
+    } catch (err) {
+
+        console.log(err);
+
+    }
+
+    answer = `
+I don't have a complete answer for that yet.<br><br>
+
+Our admissions team can assist you further.<br><br>
+
+<a href="${TRIAL_LINK}" target="_blank">
+Book Trial Lesson
+</a>
+`;
+}
     addMessage("Sauti Tamu AI", answer);
 
     input.value = "";
