@@ -2,11 +2,13 @@ alert("APP JS LOADED");
 
 async function sendMessage() {
 
-    alert("BUTTON CLICKED");
-
     try {
 
-        alert(typeof supabaseClient);
+        alert("SUPABASE_URL TYPE: " + typeof SUPABASE_URL);
+
+        alert("SUPABASE_ANON_KEY TYPE: " + typeof SUPABASE_ANON_KEY);
+
+        alert("CLIENT TYPE: " + typeof supabaseClient);
 
         const { data, error } = await supabaseClient
             .from("knowledge_base")
