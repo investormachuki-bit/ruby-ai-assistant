@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sauti Tamu CRM</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script src="config.js"></script>
+    <script src="supabase.js"></script>
+
+    <style>
+        body{
+            font-family:Arial;
+            background:#111;
+            color:white;
+            padding:20px;
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+        }
+
+        th,td{
+            border:1px solid #333;
+            padding:10px;
+        }
+
+        button{
+            padding:8px;
+            cursor:pointer;
+        }
+    </style>
+</head>
+<body>
+
+<h1>🎵 Sauti Tamu CRM</h1>
+
+<div id="stats"></div>
+
+<br>
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Interest</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+
+    <tbody id="leadsTable"></tbody>
+</table>
+
+<script src="crm.js"></script>
+
+</body>
+</html>
