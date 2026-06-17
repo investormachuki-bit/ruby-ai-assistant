@@ -1,4 +1,5 @@
 let leadMode = false;
+let leadStep = "";
 let leadData = {};
 const input = document.getElementById("message");
 const chat = document.getElementById("chat");
@@ -36,6 +37,7 @@ if (
 ) {
 
     leadMode = true;
+    leadStep = "name";
 
     addMessage(
         "Sauti Tamu AI",
@@ -46,12 +48,12 @@ if (
 
     return;
 }
-
 // COLLECT NAME
 
-if (leadMode && !leadData.name) {
+if (leadMode && leadStep === "name") {
 
     leadData.name = question;
+    leadStep = "phone";
 
     addMessage(
         "Sauti Tamu AI",
@@ -65,22 +67,44 @@ if (leadMode && !leadData.name) {
 
 // COLLECT PHONE
 
-if (leadMode && !leadData.phone) {
+if (leadMode && leadStep === "phone") {
 
     leadData.phone = question;
+    leadStep = "interest";
+
+    addMessage(
+        "Sauti Tamu AI",
+        `Which course are you interested in?<br><br>
+
+🎹 Piano<br>
+🎸 Guitar<br>
+🎻 Violin<br>
+🥁 Drums`
+    );
+
+    input.value = "";
+
+    return;
+}
+// COLLECT INTEREST
+
+if (leadMode && leadStep === "interest") {
+
+    leadData.interest = question;
 
     try {
-const { data, error } = await supabaseClient
-    .from("leads")
-    .insert([
-        {
-            organization_id: "b2f35575-ff3f-4be4-85b3-c5ca90c35213",
-            name: leadData.name,
-            phone: leadData.phone,
-            interest: "Music Lessons",
-            status: "New"
-        }
-    ]);
+
+        const { data, error } = await supabaseClient
+            .from("leads")
+            .insert([
+                {
+                    organization_id: "b2f35575-ff3f-4be4-85b3-c5ca90c35213",
+                    name: leadData.name,
+                    phone: leadData.phone,
+                    interest: leadData.interest,
+                    status: "New"
+                }
+            ]);
 
         if (error) {
 
@@ -89,7 +113,6 @@ const { data, error } = await supabaseClient
 
         } else {
 
-            alert("LEAD SAVED");
             console.log(data);
 
         }
@@ -104,16 +127,23 @@ const { data, error } = await supabaseClient
     addMessage(
         "Sauti Tamu AI",
         `Thank you! Your details have been received.<br><br>
-        <a href="${TRIAL_LINK}" target="_blank">Book Trial Lesson</a>`
+
+Course Selected: ${leadData.interest}<br><br>
+
+<a href="${TRIAL_LINK}" target="_blank">
+Book Trial Lesson
+</a>`
     );
 
     leadMode = false;
+    leadStep = "";
     leadData = {};
 
     input.value = "";
 
     return;
 }
+    
     let answer = `
 Need help choosing a course?<br><br>
 
