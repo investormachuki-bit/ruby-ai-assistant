@@ -51,13 +51,13 @@ async function loadDashboard() {
 
             <td>
 
-                <button onclick="markContacted('${lead.id}')">
-                    Contacted
-                </button>
+                <button type="button" onclick="markContacted('${lead.id}')">
+    Contacted
+</button>
 
-                <button onclick="markRegistered('${lead.id}')">
-                    Registered
-                </button>
+                <button type="button" onclick="markRegistered('${lead.id}')">
+    Registered
+</button>
 
             </td>
 
