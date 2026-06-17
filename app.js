@@ -117,15 +117,13 @@ async function sendMessage() {
         question.includes("call")
     ) {
 
-        answer = "Please contact our admissions team after booking a trial lesson: https://calendar.app.google/YUyShyEXNa4DVoqcA";
-
+        answer = 'Book your trial lesson here: <a href="https://calendar.app.google/YUyShyEXNa4DVoqcA" target="_blank">Book Trial Lesson</a>';
     }
 
     // Default
     else {
 
-        answer = "Thank you for your question. Please book a trial lesson here: https://calendar.app.google/YUyShyEXNa4DVoqcA";
-
+        answer = 'Please contact our admissions team after booking a trial lesson: <a href="https://calendar.app.google/YUyShyEXNa4DVoqcA" target="_blank">Book Trial Lesson</a>';
     }
 
     chat.innerHTML += `
