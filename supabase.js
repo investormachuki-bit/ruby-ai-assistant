@@ -1,4 +1,4 @@
-const supabaseClient = supabase.createClient(
-  https://osnrnrgnegqpbiknsgit.supabase.co,
-  eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zbnJucmduZWdxcGJpa25zZ2l0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2ODI2MTUsImV4cCI6MjA5NzI1ODYxNX0._zOqjvIhaRCwGHBpEY1q4guGxMmXOATFj4F4rEF-dYc
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
 );
