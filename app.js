@@ -21,7 +21,7 @@ async function sendMessage() {
 
     const q = question.toLowerCase();
     
-// LEAD CAPTURE
+// START LEAD CAPTURE
 
 if (
     !leadMode &&
@@ -71,7 +71,7 @@ if (leadMode && !leadData.phone) {
 
     try {
 
-        await supabaseClient
+        const { data, error } = await supabaseClient
             .from("leads")
             .insert([
                 {
@@ -82,8 +82,23 @@ if (leadMode && !leadData.phone) {
                 }
             ]);
 
+        if (error) {
+
+            alert("SUPABASE ERROR: " + error.message);
+            console.log(error);
+
+        } else {
+
+            alert("LEAD SAVED");
+            console.log(data);
+
+        }
+
     } catch (err) {
+
+        alert("JS ERROR: " + err.message);
         console.log(err);
+
     }
 
     addMessage(
@@ -94,6 +109,8 @@ if (leadMode && !leadData.phone) {
 
     leadMode = false;
     leadData = {};
+
+    input.value = "";
 
     return;
 }
