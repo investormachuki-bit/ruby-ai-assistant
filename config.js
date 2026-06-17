@@ -1,4 +1,4 @@
-const GEMINI_API_KEY = "AQ.Ab8RN6JqL5aaDpSP0s53viZfzRarH-z0FKZwPnHI8NuFXyXFMA";
+const GEMINI_API_KEY = "AQ.Ab8RN6K3DcPRE6_JRUSP7VEl0Gdnuw73lAq71_ev0bvTsM3BzA";
 
 const SUPABASE_URL = "https://osnrnrgnegqpbiknsgit.supabase.co";
 
