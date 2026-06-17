@@ -77,7 +77,8 @@ const { data, error } = await supabaseClient
             organization_id: "b2f35575-ff3f-4be4-85b3-c5ca90c35213",
             name: leadData.name,
             phone: leadData.phone,
-            interest: "Music Lessons"
+            interest: "Music Lessons",
+            status: "New"
         }
     ]);
 
