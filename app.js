@@ -90,7 +90,21 @@ if (leadMode && leadStep === "phone") {
 
 if (leadMode && leadStep === "interest") {
 
+    if (q.includes("piano")) {
+    leadData.interest = "Piano";
+}
+else if (q.includes("guitar")) {
+    leadData.interest = "Guitar";
+}
+else if (q.includes("violin")) {
+    leadData.interest = "Violin";
+}
+else if (q.includes("drum")) {
+    leadData.interest = "Drums";
+}
+else {
     leadData.interest = question;
+}
 
     try {
 
