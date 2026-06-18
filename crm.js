@@ -1,5 +1,3 @@
-alert("CRM JS LOADED");
-
 document
 .getElementById("search")
 .addEventListener("keyup", loadDashboard);
