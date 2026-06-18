@@ -1,5 +1,5 @@
-const GEMINI_API_KEY = "AQ.Ab8RN6K3DcPRE6_JRUSP7VEl0Gdnuw73lAq71_ev0bvTsM3BzA";
+window.GEMINI_API_KEY = "AQ.Ab8RN6K3DcPRE6_JRUSP7VEl0Gdnuw73lAq71_ev0bvTsM3BzA";
 
-const SUPABASE_URL = "https://osnrnrgnegqpbiknsgit.supabase.co";
+window.SUPABASE_URL = "https://osnrnrgnegqpbiknsgit.supabase.co";
 
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zbnJucmduZWdxcGJpa25zZ2l0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2ODI2MTUsImV4cCI6MjA5NzI1ODYxNX0._zOqjvIhaRCwGHBpEY1q4guGxMmXOATFj4F4rEF-dYc";
+window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zbnJucmduZWdxcGJpa25zZ2l0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2ODI2MTUsImV4cCI6MjA5NzI1ODYxNX0._zOqjvIhaRCwGHBpEY1q4guGxMmXOATFj4F4rEF-dYc";
