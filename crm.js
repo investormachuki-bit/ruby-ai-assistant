@@ -1,3 +1,4 @@
+alert("CRM JS LOADED");
 alert(typeof supabaseClient);
 async function loadDashboard() {
 document
