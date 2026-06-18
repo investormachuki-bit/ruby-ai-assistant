@@ -1,3 +1,4 @@
+alert(typeof supabaseClient);
 async function loadDashboard() {
 document
 .getElementById("search")
