@@ -1,95 +1,193 @@
 async function loadDashboard() {
+document
+.getElementById("search")
+.addEventListener("keyup", loadDashboard);
 
-    // LOAD STATS
+async function loadDashboard() {
 
-    const { data: statsData } = await supabaseClient
+    // DASHBOARD STATS
+
+    const { data: stats, error: statsError } =
+    await supabaseClient
         .from("leads")
         .select("status");
 
-    let newLeads = 0;
-    let contacted = 0;
-    let trialBooked = 0;
-    let registered = 0;
+    if(statsError){
+        console.log(statsError);
+        return;
+    }
 
-    statsData.forEach(lead => {
+    let newCount = 0;
+    let contactedCount = 0;
+    let registeredCount = 0;
 
-        if (lead.status === "New") newLeads++;
-        if (lead.status === "Contacted") contacted++;
-        if (lead.status === "Trial Booked") trialBooked++;
-        if (lead.status === "Registered") registered++;
+    stats.forEach(item => {
+
+        if(item.status === "New"){
+            newCount++;
+        }
+
+        if(item.status === "Contacted"){
+            contactedCount++;
+        }
+
+        if(item.status === "Registered"){
+            registeredCount++;
+        }
 
     });
 
     document.getElementById("stats").innerHTML = `
-        <h3>📊 Dashboard</h3>
+        <h3>Dashboard</h3>
 
-        New Leads: ${newLeads}<br>
-        Contacted: ${contacted}<br>
-        Trial Booked: ${trialBooked}<br>
-        Registered: ${registered}
+        New Leads: ${newCount}<br>
+        Contacted: ${contactedCount}<br>
+        Registered: ${registeredCount}
     `;
 
-    // LOAD LEADS
+    // SEARCH
 
-    const { data: leads } = await supabaseClient
+    const search =
+    document.getElementById("search")
+    .value
+    .toLowerCase();
+
+    const { data: leads, error: leadsError } =
+    await supabaseClient
         .from("leads")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("created_at", {
+            ascending:false
+        });
 
-    const table = document.getElementById("leadsTable");
+    if(leadsError){
+        console.log(leadsError);
+        return;
+    }
+
+    const table =
+    document.getElementById("leadsTable");
 
     table.innerHTML = "";
 
-    leads.forEach(lead => {
+    leads
+    .filter(lead => {
+
+        if(!search) return true;
+
+        return (
+            lead.name &&
+            lead.name
+                .toLowerCase()
+                .includes(search)
+        );
+
+    })
+    .forEach(lead => {
 
         table.innerHTML += `
         <tr>
+
             <td>${lead.name || ""}</td>
+
             <td>${lead.phone || ""}</td>
+
             <td>${lead.interest || ""}</td>
-            <td>${lead.status || ""}</td>
+
+            <td>${lead.status || "New"}</td>
 
             <td>
 
-                <button type="button" onclick="markContacted('${lead.id}')">
-    Contacted
-</button>
+                <button
+                class="contacted"
+                onclick="markContacted('${lead.id}')">
+                Contacted
+                </button>
 
-                <button type="button" onclick="markRegistered('${lead.id}')">
-    Registered
-</button>
+                <button
+                class="registered"
+                onclick="markRegistered('${lead.id}')">
+                Registered
+                </button>
+
+                <button
+                class="whatsapp"
+                onclick="openWhatsApp('${lead.name}','${lead.phone}','${lead.interest}')">
+                WhatsApp
+                </button>
 
             </td>
 
         </tr>
         `;
-
     });
-
 }
 
-async function markContacted(id) {
+async function markContacted(id){
 
+    const { error } =
     await supabaseClient
         .from("leads")
         .update({
-            status: "Contacted"
+            status:"Contacted"
         })
         .eq("id", id);
+
+    if(error){
+        alert(error.message);
+        console.log(error);
+        return;
+    }
 
     loadDashboard();
 }
 
-async function markRegistered(id) {
+async function markRegistered(id){
 
+    const { error } =
     await supabaseClient
         .from("leads")
         .update({
-            status: "Registered"
+            status:"Registered"
         })
         .eq("id", id);
 
+    if(error){
+        alert(error.message);
+        console.log(error);
+        return;
+    }
+
     loadDashboard();
+}
+
+function openWhatsApp(name, phone, interest){
+
+    let cleanPhone =
+    phone.replace(/\D/g,'');
+
+    if(cleanPhone.startsWith("0")){
+        cleanPhone =
+        "254" +
+        cleanPhone.substring(1);
+    }
+
+    const message =
+`Hello ${name},
+
+Thank you for your interest in ${interest} lessons at Sauti Tamu Music School.
+
+Book your FREE trial lesson here:
+
+https://calendar.app.google/YUyShyEXNa4DVoqcA
+
+Regards,
+Sauti Tamu Music School`;
+
+    const url =
+`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+
+    window.open(url, "_blank");
 }
 
 loadDashboard();
