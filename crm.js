@@ -1,19 +1,17 @@
 alert("CRM JS LOADED");
-async function loadDashboard() {
+
 document
 .getElementById("search")
 .addEventListener("keyup", loadDashboard);
 
 async function loadDashboard() {
 
-    // DASHBOARD STATS
-
     const { data: stats, error: statsError } =
-    await supabaseClient
+    await window.supabaseClient
         .from("leads")
         .select("status");
 
-    if(statsError){
+    if (statsError) {
         console.log(statsError);
         return;
     }
@@ -24,15 +22,15 @@ async function loadDashboard() {
 
     stats.forEach(item => {
 
-        if(item.status === "New"){
+        if (item.status === "New") {
             newCount++;
         }
 
-        if(item.status === "Contacted"){
+        if (item.status === "Contacted") {
             contactedCount++;
         }
 
-        if(item.status === "Registered"){
+        if (item.status === "Registered") {
             registeredCount++;
         }
 
@@ -40,28 +38,26 @@ async function loadDashboard() {
 
     document.getElementById("stats").innerHTML = `
         <h3>Dashboard</h3>
-
         New Leads: ${newCount}<br>
         Contacted: ${contactedCount}<br>
         Registered: ${registeredCount}
     `;
 
-    // SEARCH
-
     const search =
-    document.getElementById("search")
-    .value
-    .toLowerCase();
+        document
+        .getElementById("search")
+        .value
+        .toLowerCase();
 
     const { data: leads, error: leadsError } =
-    await supabaseClient
+    await window.supabaseClient
         .from("leads")
         .select("*")
         .order("created_at", {
-            ascending:false
+            ascending: false
         });
 
-    if(leadsError){
+    if (leadsError) {
         console.log(leadsError);
         return;
     }
@@ -74,13 +70,11 @@ async function loadDashboard() {
     leads
     .filter(lead => {
 
-        if(!search) return true;
+        if (!search) return true;
 
         return (
             lead.name &&
-            lead.name
-                .toLowerCase()
-                .includes(search)
+            lead.name.toLowerCase().includes(search)
         );
 
     })
@@ -88,13 +82,9 @@ async function loadDashboard() {
 
         table.innerHTML += `
         <tr>
-
             <td>${lead.name || ""}</td>
-
             <td>${lead.phone || ""}</td>
-
             <td>${lead.interest || ""}</td>
-
             <td>${lead.status || "New"}</td>
 
             <td>
@@ -118,56 +108,54 @@ async function loadDashboard() {
                 </button>
 
             </td>
-
         </tr>
         `;
     });
+
 }
 
-async function markContacted(id){
+async function markContacted(id) {
 
     const { error } =
-    await supabaseClient
+    await window.supabaseClient
         .from("leads")
         .update({
-            status:"Contacted"
+            status: "Contacted"
         })
         .eq("id", id);
 
-    if(error){
+    if (error) {
         alert(error.message);
-        console.log(error);
         return;
     }
 
     loadDashboard();
 }
 
-async function markRegistered(id){
+async function markRegistered(id) {
 
     const { error } =
-    await supabaseClient
+    await window.supabaseClient
         .from("leads")
         .update({
-            status:"Registered"
+            status: "Registered"
         })
         .eq("id", id);
 
-    if(error){
+    if (error) {
         alert(error.message);
-        console.log(error);
         return;
     }
 
     loadDashboard();
 }
 
-function openWhatsApp(name, phone, interest){
+function openWhatsApp(name, phone, interest) {
 
     let cleanPhone =
-    phone.replace(/\D/g,'');
+    (phone || "").replace(/\D/g, "");
 
-    if(cleanPhone.startsWith("0")){
+    if (cleanPhone.startsWith("0")) {
         cleanPhone =
         "254" +
         cleanPhone.substring(1);
