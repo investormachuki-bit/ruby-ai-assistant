@@ -1,5 +1,4 @@
 alert("CRM JS LOADED");
-alert(typeof window.supabaseClient);
 async function loadDashboard() {
 document
 .getElementById("search")
