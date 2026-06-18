@@ -112,38 +112,48 @@ async function loadDashboard() {
 
 }
 
-async function markContacted(id) {
+async function markContacted(id){
+
+    alert("Contacted clicked: " + id);
 
     const { error } =
     await window.supabaseClient
         .from("leads")
         .update({
-            status: "Contacted"
+            status:"Contacted"
         })
         .eq("id", id);
 
-    if (error) {
+    if(error){
         alert(error.message);
+        console.log(error);
         return;
     }
+
+    alert("Updated Successfully");
 
     loadDashboard();
 }
 
-async function markRegistered(id) {
+async function markRegistered(id){
+
+    alert("Registered clicked: " + id);
 
     const { error } =
     await window.supabaseClient
         .from("leads")
         .update({
-            status: "Registered"
+            status:"Registered"
         })
         .eq("id", id);
 
-    if (error) {
+    if(error){
         alert(error.message);
+        console.log(error);
         return;
     }
+
+    alert("Updated Successfully");
 
     loadDashboard();
 }
