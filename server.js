@@ -71,6 +71,9 @@ app.post("/webhook", async (req, res) => {
 
         const from = message.from;
         const text = message.text?.body?.trim().toLowerCase();
+        console.log("FROM:", from);
+console.log("TEXT:", text);
+console.log("SESSION:", session);
 
         // CHECK EXISTING SESSION
         let { data: session } = await supabase
