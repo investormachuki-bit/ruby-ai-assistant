@@ -101,7 +101,15 @@ app.post("/webhook", async (req, res) => {
     }
 
     const from = incomingMessage.from;
-    const text = incomingMessage.text?.body?.trim();
+    let text = "";
+
+if (incomingMessage.type === "text") {
+  text = incomingMessage.text?.body?.trim();
+}
+
+if (incomingMessage.type === "interactive") {
+  text = incomingMessage.interactive?.button_reply?.title?.trim();
+}
 
     console.log("FROM:", from);
     console.log("TEXT:", text);
