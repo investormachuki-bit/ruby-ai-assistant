@@ -16,7 +16,7 @@ const supabase = createClient(
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const ACCESS_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
-const ORGANIZATION_ID = "b2f35575-ff3f-4be4-85b3-c5ca90c35213";
+const TENANT_ID = "8eaca035-c542-4ffb-bf0a-112442006376";
 
 
 // SEND WHATSAPP MESSAGE
@@ -37,15 +37,12 @@ async function sendMessage(to, text) {
       }
     );
   } catch (error) {
-    console.log(
-      "Send message error:",
-      error.response?.data || error.message
-    );
+    console.log("Send error:", error.response?.data || error.message);
   }
 }
 
 
-// VERIFY WEBHOOK
+// WEBHOOK VERIFY
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
@@ -60,14 +57,14 @@ app.get("/webhook", (req, res) => {
 });
 
 
-// RECEIVE WEBHOOK
+// WEBHOOK RECEIVE
 app.post("/webhook", async (req, res) => {
   try {
     const value = req.body?.entry?.[0]?.changes?.[0]?.value;
 
-    console.log("Incoming webhook:", JSON.stringify(value, null, 2));
+    console.log("Incoming:", JSON.stringify(value, null, 2));
 
-    // Ignore status updates
+    // Ignore statuses
     if (value?.statuses && !value?.messages) {
       console.log("Status update only");
       return res.sendStatus(200);
@@ -76,7 +73,6 @@ app.post("/webhook", async (req, res) => {
     const incomingMessage = value?.messages?.[0];
 
     if (!incomingMessage) {
-      console.log("No message found");
       return res.sendStatus(200);
     }
 
@@ -86,60 +82,92 @@ app.post("/webhook", async (req, res) => {
     console.log("FROM:", from);
     console.log("TEXT:", text);
 
-    // FIND EXISTING SESSION
+
+    // FIND SESSION
     const { data: session } = await supabase
       .from("conversation_sessions")
       .select("*")
       .eq("phone", from)
       .maybeSingle();
 
-    // START NEW SESSION
+
+    // START FLOW
     if (!session) {
-      const { data: firstStep } = await supabase
-        .from("qualification_steps")
+      const { data: flow } = await supabase
+        .from("flows")
         .select("*")
-        .eq("organization_id", ORGANIZATION_ID)
-        .order("step_order", { ascending: true })
+        .eq("tenant_id", TENANT_ID)
+        .eq("trigger_type", "keyword")
+        .eq("trigger_value", text.toLowerCase())
+        .eq("is_active", true)
+        .single();
+
+      if (!flow) {
+        await sendMessage(
+          from,
+          "No active flow found. Please type HI to begin."
+        );
+        return res.sendStatus(200);
+      }
+
+      // GET FIRST NODE
+      const { data: firstNode } = await supabase
+        .from("flow_nodes")
+        .select("*")
+        .eq("flow_id", flow.id)
+        .order("created_at", { ascending: true })
         .limit(1)
         .single();
 
       await supabase.from("conversation_sessions").insert({
-        organization_id: ORGANIZATION_ID,
+        organization_id: "b2f35575-ff3f-4be4-85b3-c5ca90c35213",
         phone: from,
-        current_step: firstStep.step_name,
-        current_step_order: firstStep.step_order,
+        current_node_id: firstNode.id,
         collected_data: {},
         status: "active"
       });
 
-      await sendMessage(from, firstStep.question);
+      await sendMessage(from, firstNode.content.text);
 
       return res.sendStatus(200);
     }
 
-    // SAVE USER REPLY
-    await supabase.from("messages").insert({
-      conversation_id: session.id,
-      role: "user",
-      content: text
-    });
 
+    // SESSION COMPLETE
+    if (session.status === "completed") {
+      await sendMessage(
+        from,
+        "Your request is already recorded. Reply HI to start again."
+      );
+      return res.sendStatus(200);
+    }
+
+
+    // GET CURRENT NODE
+    const { data: currentNode } = await supabase
+      .from("flow_nodes")
+      .select("*")
+      .eq("id", session.current_node_id)
+      .single();
+
+
+    // SAVE USER RESPONSE
     const updatedData = {
       ...(session.collected_data || {}),
-      [session.current_step]: text
+      [currentNode.title]: text
     };
 
-    const nextStepOrder = session.current_step_order + 1;
 
-    const { data: nextStep } = await supabase
-      .from("qualification_steps")
+    // FIND NEXT EDGE
+    const { data: edge } = await supabase
+      .from("flow_edges")
       .select("*")
-      .eq("organization_id", ORGANIZATION_ID)
-      .eq("step_order", nextStepOrder)
-      .maybeSingle();
+      .eq("source_node_id", currentNode.id)
+      .single();
+
 
     // END FLOW
-    if (!nextStep) {
+    if (!edge) {
       await supabase
         .from("conversation_sessions")
         .update({
@@ -148,54 +176,73 @@ app.post("/webhook", async (req, res) => {
         })
         .eq("id", session.id);
 
-      await supabase.from("leads").insert({
-        organization_id: ORGANIZATION_ID,
-        phone: from,
-        status: "Qualified"
-      });
-
       await sendMessage(
         from,
-        "Thank you. Your SaaS consultation request has been received successfully. Our team will contact you shortly."
+        "Thank you. Your request has been completed."
       );
 
       return res.sendStatus(200);
     }
 
+
+    // GET NEXT NODE
+    const { data: nextNode } = await supabase
+      .from("flow_nodes")
+      .select("*")
+      .eq("id", edge.target_node_id)
+      .single();
+
+
     // UPDATE SESSION
     await supabase
       .from("conversation_sessions")
       .update({
-        current_step: nextStep.step_name,
-        current_step_order: nextStep.step_order,
+        current_node_id: nextNode.id,
         collected_data: updatedData
       })
       .eq("id", session.id);
 
-    // SAVE BOT MESSAGE
+
+    // SAVE MESSAGES
+    await supabase.from("messages").insert({
+      conversation_id: session.id,
+      role: "user",
+      content: text
+    });
+
     await supabase.from("messages").insert({
       conversation_id: session.id,
       role: "assistant",
-      content: nextStep.question
+      content: nextNode.content.text
     });
 
-    await sendMessage(from, nextStep.question);
+
+    // SEND NEXT MESSAGE
+    await sendMessage(from, nextNode.content.text);
+
+    // FINAL NODE
+    if (nextNode.type === "end") {
+      await supabase
+        .from("conversation_sessions")
+        .update({
+          status: "completed"
+        })
+        .eq("id", session.id);
+    }
 
     return res.sendStatus(200);
 
   } catch (error) {
-    console.log(
-      "Webhook error:",
-      error.response?.data || error.message
-    );
+    console.log("Webhook error:", error.response?.data || error.message);
     return res.sendStatus(500);
   }
 });
 
 
-// START SERVER
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+      
