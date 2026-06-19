@@ -78,11 +78,6 @@ if (!message) {
     return res.sendStatus(200);
 }
 
-const message = value.messages[0];
-        if (!message) {
-            return res.sendStatus(200);
-        }
-
         const from = message.from;
         const text = message.text?.body?.trim().toLowerCase();
         console.log("FROM:", from);
