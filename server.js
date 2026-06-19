@@ -20,15 +20,38 @@ const TENANT_ID = "8eaca035-c542-4ffb-bf0a-112442006376";
 
 
 // SEND WHATSAPP MESSAGE
-async function sendMessage(to, text) {
+async function sendMessage(to, text, options = null) {
   try {
+    let payload = {
+      messaging_product: "whatsapp",
+      to
+    };
+
+    if (options && options.length > 0) {
+      payload.type = "interactive";
+      payload.interactive = {
+        type: "button",
+        body: {
+          text
+        },
+        action: {
+          buttons: options.map((option, index) => ({
+            type: "reply",
+            reply: {
+              id: `btn_${index}`,
+              title: option
+            }
+          }))
+        }
+      };
+    } else {
+      payload.type = "text";
+      payload.text = { body: text };
+    }
+
     await axios.post(
       `https://graph.facebook.com/v23.0/${PHONE_NUMBER_ID}/messages`,
-      {
-        messaging_product: "whatsapp",
-        to,
-        text: { body: text }
-      },
+      payload,
       {
         headers: {
           Authorization: `Bearer ${ACCESS_TOKEN}`,
@@ -36,6 +59,7 @@ async function sendMessage(to, text) {
         }
       }
     );
+
   } catch (error) {
     console.log("Send error:", error.response?.data || error.message);
   }
