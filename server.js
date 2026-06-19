@@ -198,7 +198,7 @@ for (const edge of edges) {
 
 
     // END FLOW
-    if (!edge) {
+    if (!selectedEdge) {
       await supabase
         .from("conversation_sessions")
         .update({
@@ -220,7 +220,7 @@ for (const edge of edges) {
     const { data: nextNode } = await supabase
       .from("flow_nodes")
       .select("*")
-      .eq("id", edge.target_node_id)
+      .eq("id", selectedEdge.target_node_id)
       .single();
 
 
