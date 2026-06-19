@@ -73,7 +73,7 @@ app.post("/webhook", async (req, res) => {
         const text = message.text?.body?.trim().toLowerCase();
         console.log("FROM:", from);
 console.log("TEXT:", text);
-console.log("SESSION:", session);
+
 
         // CHECK EXISTING SESSION
         let { data: session } = await supabase
@@ -81,6 +81,8 @@ console.log("SESSION:", session);
             .select("*")
             .eq("phone", from)
             .single();
+
+        console.log("SESSION:", session);
 
         // NEW USER
         if (!session) {
