@@ -13,7 +13,7 @@ app.use(express.json());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Serve frontend
+// Serve frontend files
 app.use(express.static(path.join(__dirname, "public")));
 
 // Supabase
@@ -22,17 +22,17 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY
 );
 
-// Env
+// Env variables
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 
-// Home
+// Home route
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// CRM
+// CRM route
 app.get("/crm", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "crm.html"));
 });
@@ -66,13 +66,12 @@ app.post("/webhook", async (req, res) => {
       JSON.stringify(value, null, 2)
     );
 
-    // Ignore status updates
-    if (value?.statuses) {
+    // Ignore status-only updates
+    if (value?.statuses && !value?.messages) {
       console.log("Status update only");
       return res.sendStatus(200);
     }
 
-    // Process messages
     const message = value?.messages?.[0];
 
     if (!message) {
@@ -86,7 +85,7 @@ app.post("/webhook", async (req, res) => {
     console.log("FROM:", from);
     console.log("TEXT:", text);
 
-    // Check existing session
+    // Check session
     let { data: session } = await supabase
       .from("whatsapp_sessions")
       .select("*")
@@ -99,25 +98,24 @@ app.post("/webhook", async (req, res) => {
 
     // New user
     if (!session) {
-      await supabase.from("whatsapp_sessions").insert([
-        {
-          phone: from,
-          step: "location",
-          data: {}
-        }
-      ]);
+      await supabase
+        .from("whatsapp_sessions")
+        .insert([
+          {
+            phone: from,
+            step: "location",
+            data: {}
+          }
+        ]);
 
-      // Ignore Meta fake sender
-      if (from !== "16315551181") {
-        await sendMessage(
-          from,
+      await sendMessage(
+        from,
 `Welcome to Sauti Tamu Music School 🎵
 
 Before we continue, are you located in Nairobi?
 
 Reply YES or NO.`
-        );
-      }
+      );
 
       return res.sendStatus(200);
     }
@@ -282,16 +280,18 @@ Which instrument are you interested in?
       };
 
       // Save lead
-      await supabase.from("leads").insert([
-        {
-          organization_id:
-            "b2f35575-ff3f-4be4-85b3-c5ca90c35213",
-          name: "WhatsApp Lead",
-          phone: from,
-          interest: finalData.instrument,
-          status: "Qualified"
-        }
-      ]);
+      await supabase
+        .from("leads")
+        .insert([
+          {
+            organization_id:
+              "b2f35575-ff3f-4be4-85b3-c5ca90c35213",
+            name: "WhatsApp Lead",
+            phone: from,
+            interest: finalData.instrument,
+            status: "Qualified"
+          }
+        ]);
 
       // Delete session
       await supabase
@@ -322,7 +322,7 @@ https://calendar.app.google/YUyShyEXNa4DVoqcA`
   }
 });
 
-// Send message helper
+// Send WhatsApp message
 async function sendMessage(to, body) {
   await axios.post(
     `https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`,
