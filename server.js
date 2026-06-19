@@ -1,13 +1,17 @@
-require("dotenv").config();
+import dotenv from "dotenv";
+import express from "express";
+import axios from "axios";
+import path from "path";
+import { fileURLToPath } from "url";
+import { createClient } from "@supabase/supabase-js";
 
-const express = require("express");
-const axios = require("axios");
-const path = require("path");
-const { createClient } = require("@supabase/supabase-js");
+dotenv.config();
 
 const app = express();
-
 app.use(express.json());
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 
 // SERVE FRONTEND FILES
@@ -39,7 +43,7 @@ app.get("/crm", (req, res) => {
 });
 
 
-// WEBHOOK VERIFICATION
+// WEBHOOK VERIFY
 app.get("/webhook", (req, res) => {
     const mode = req.query["hub.mode"];
     const token = req.query["hub.verify_token"];
@@ -57,7 +61,7 @@ app.get("/webhook", (req, res) => {
 });
 
 
-// RECEIVE WHATSAPP MESSAGES
+// RECEIVE WHATSAPP
 app.post("/webhook", async (req, res) => {
     try {
         console.log(
@@ -96,7 +100,7 @@ app.post("/webhook", async (req, res) => {
             );
         }
 
-        // REPLY TO USER
+        // SEND REPLY
         await axios.post(
             `https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`,
             {
