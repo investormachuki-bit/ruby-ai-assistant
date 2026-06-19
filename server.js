@@ -1,7 +1,9 @@
-require("dotenv").config();
-const express = require("express");
-const axios = require("axios");
-const { createClient } = require("@supabase/supabase-js");
+import dotenv from "dotenv";
+import express from "express";
+import axios from "axios";
+import { createClient } from "@supabase/supabase-js";
+
+dotenv.config();
 
 const app = express();
 app.use(express.json());
@@ -85,11 +87,11 @@ app.post("/webhook", async (req, res) => {
     console.log("TEXT:", text);
 
     // FIND EXISTING SESSION
-    let { data: session } = await supabase
+    const { data: session } = await supabase
       .from("conversation_sessions")
       .select("*")
       .eq("phone", from)
-      .single();
+      .maybeSingle();
 
     // START NEW SESSION
     if (!session) {
@@ -101,18 +103,14 @@ app.post("/webhook", async (req, res) => {
         .limit(1)
         .single();
 
-      const { data: newSession } = await supabase
-        .from("conversation_sessions")
-        .insert({
-          organization_id: ORGANIZATION_ID,
-          phone: from,
-          current_step: firstStep.step_name,
-          current_step_order: firstStep.step_order,
-          collected_data: {},
-          status: "active"
-        })
-        .select()
-        .single();
+      await supabase.from("conversation_sessions").insert({
+        organization_id: ORGANIZATION_ID,
+        phone: from,
+        current_step: firstStep.step_name,
+        current_step_order: firstStep.step_order,
+        collected_data: {},
+        status: "active"
+      });
 
       await sendMessage(from, firstStep.question);
 
@@ -126,7 +124,6 @@ app.post("/webhook", async (req, res) => {
       content: text
     });
 
-    // UPDATE COLLECTED DATA
     const updatedData = {
       ...(session.collected_data || {}),
       [session.current_step]: text
@@ -139,9 +136,9 @@ app.post("/webhook", async (req, res) => {
       .select("*")
       .eq("organization_id", ORGANIZATION_ID)
       .eq("step_order", nextStepOrder)
-      .single();
+      .maybeSingle();
 
-    // END OF FLOW
+    // END FLOW
     if (!nextStep) {
       await supabase
         .from("conversation_sessions")
@@ -175,14 +172,13 @@ app.post("/webhook", async (req, res) => {
       })
       .eq("id", session.id);
 
-    // SAVE BOT QUESTION
+    // SAVE BOT MESSAGE
     await supabase.from("messages").insert({
       conversation_id: session.id,
       role: "assistant",
       content: nextStep.question
     });
 
-    // SEND NEXT QUESTION
     await sendMessage(from, nextStep.question);
 
     return res.sendStatus(200);
@@ -192,7 +188,6 @@ app.post("/webhook", async (req, res) => {
       "Webhook error:",
       error.response?.data || error.message
     );
-
     return res.sendStatus(500);
   }
 });
