@@ -1,8 +1,6 @@
 import dotenv from "dotenv";
 import express from "express";
 import axios from "axios";
-import path from "path";
-import { fileURLToPath } from "url";
 import { createClient } from "@supabase/supabase-js";
 
 dotenv.config();
@@ -10,306 +8,228 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Serve frontend files
-app.use(express.static(path.join(__dirname, "public")));
-
-// Supabase
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_ANON_KEY
 );
 
-// Env variables
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
+const TENANT_ID = process.env.DEFAULT_TENANT_ID;
 
-// Home route
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.send("Ruby Flow Engine Running");
 });
 
-// CRM route
-app.get("/crm", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "crm.html"));
-});
 
-// Verify webhook
+// WEBHOOK VERIFY
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
 
   if (mode === "subscribe" && token === VERIFY_TOKEN) {
-    console.log("WEBHOOK VERIFIED");
+    console.log("Webhook verified");
     return res.status(200).send(challenge);
   }
 
   return res.sendStatus(403);
 });
 
-// Receive webhook
+
+// WEBHOOK RECEIVE
 app.post("/webhook", async (req, res) => {
   try {
-    console.log(
-      "Incoming webhook:",
-      JSON.stringify(req.body, null, 2)
-    );
-
     const value = req.body?.entry?.[0]?.changes?.[0]?.value;
 
-    console.log(
-      "VALUE OBJECT:",
-      JSON.stringify(value, null, 2)
-    );
+    console.log("VALUE OBJECT:", JSON.stringify(value, null, 2));
 
-    // Ignore status-only updates
+    // Ignore statuses
     if (value?.statuses && !value?.messages) {
       console.log("Status update only");
       return res.sendStatus(200);
     }
 
-    const message = value?.messages?.[0];
+    const incomingMessage = value?.messages?.[0];
 
-    if (!message) {
-      console.log("No message found");
+    if (!incomingMessage) {
       return res.sendStatus(200);
     }
 
-    const from = message.from;
-    const text = message.text?.body?.trim().toLowerCase();
+    const from = incomingMessage.from;
+    const text = incomingMessage.text?.body?.trim();
 
     console.log("FROM:", from);
     console.log("TEXT:", text);
 
-    // Check session
-    let { data: session } = await supabase
-      .from("whatsapp_sessions")
+    // 1. FIND OR CREATE CONTACT
+    let { data: contact } = await supabase
+      .from("contacts")
       .select("*")
       .eq("phone", from)
+      .eq("tenant_id", TENANT_ID)
       .single();
 
-    console.log("SESSION:", session);
-    console.log("CURRENT STEP:", session?.step);
-    console.log("SESSION DATA:", session?.data);
-
-    // New user
-    if (!session) {
-      await supabase
-        .from("whatsapp_sessions")
+    if (!contact) {
+      const { data: newContact } = await supabase
+        .from("contacts")
         .insert([
           {
-            phone: from,
-            step: "location",
-            data: {}
+            tenant_id: TENANT_ID,
+            phone: from
           }
-        ]);
+        ])
+        .select()
+        .single();
 
-      await sendMessage(
-        from,
-`Welcome to Sauti Tamu Music School 🎵
-
-Before we continue, are you located in Nairobi?
-
-Reply YES or NO.`
-      );
-
-      return res.sendStatus(200);
+      contact = newContact;
     }
 
-    // STEP 1: LOCATION
-    if (session.step === "location") {
-      if (text === "no") {
-        await sendMessage(
-          from,
-          "Currently we only serve Nairobi clients. Thank you."
-        );
-        return res.sendStatus(200);
-      }
+    // 2. FIND OPEN CONVERSATION
+    let { data: conversation } = await supabase
+      .from("conversations")
+      .select("*")
+      .eq("contact_id", contact.id)
+      .eq("status", "open")
+      .single();
 
-      if (text === "yes") {
-        await supabase
-          .from("whatsapp_sessions")
-          .update({ step: "instrument" })
-          .eq("phone", from);
+    // 3. CREATE NEW CONVERSATION IF NONE
+    if (!conversation) {
+      const { data: flow } = await supabase
+        .from("flows")
+        .select("*")
+        .eq("tenant_id", TENANT_ID)
+        .eq("is_active", true)
+        .single();
 
-        await sendMessage(
-          from,
-`Great 🎵
+      const { data: firstNode } = await supabase
+        .from("flow_nodes")
+        .select("*")
+        .eq("flow_id", flow.id)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .single();
 
-Which instrument are you interested in?
+      const { data: channel } = await supabase
+        .from("channels")
+        .select("*")
+        .eq("tenant_id", TENANT_ID)
+        .eq("type", "whatsapp")
+        .single();
 
-1. Piano
-2. Guitar
-3. Violin
-4. Drums
-5. Voice`
-        );
-
-        return res.sendStatus(200);
-      }
-    }
-
-    // STEP 2: INSTRUMENT
-    if (session.step === "instrument") {
-      const instruments = {
-        "1": "Piano",
-        "2": "Guitar",
-        "3": "Violin",
-        "4": "Drums",
-        "5": "Voice"
-      };
-
-      const chosen = instruments[text];
-
-      if (!chosen) {
-        await sendMessage(
-          from,
-          "Please reply with 1, 2, 3, 4 or 5."
-        );
-        return res.sendStatus(200);
-      }
-
-      await supabase
-        .from("whatsapp_sessions")
-        .update({
-          step: "student_type",
-          data: {
-            ...session.data,
-            instrument: chosen
-          }
-        })
-        .eq("phone", from);
-
-      await sendMessage(
-        from,
-`Who is the student?
-
-1. Child
-2. Adult`
-      );
-
-      return res.sendStatus(200);
-    }
-
-    // STEP 3: STUDENT TYPE
-    if (session.step === "student_type") {
-      const type =
-        text === "1"
-          ? "Child"
-          : text === "2"
-          ? "Adult"
-          : null;
-
-      if (!type) {
-        await sendMessage(
-          from,
-          "Reply 1 for Child or 2 for Adult."
-        );
-        return res.sendStatus(200);
-      }
-
-      await supabase
-        .from("whatsapp_sessions")
-        .update({
-          step: "age",
-          data: {
-            ...session.data,
-            student_type: type
-          }
-        })
-        .eq("phone", from);
-
-      await sendMessage(
-        from,
-        "How old is the student?"
-      );
-
-      return res.sendStatus(200);
-    }
-
-    // STEP 4: AGE
-    if (session.step === "age") {
-      await supabase
-        .from("whatsapp_sessions")
-        .update({
-          step: "schedule",
-          data: {
-            ...session.data,
-            age: text
-          }
-        })
-        .eq("phone", from);
-
-      await sendMessage(
-        from,
-`Preferred lesson time?
-
-1. Weekday
-2. Weekend
-3. Flexible`
-      );
-
-      return res.sendStatus(200);
-    }
-
-    // STEP 5: SCHEDULE
-    if (session.step === "schedule") {
-      const schedules = {
-        "1": "Weekday",
-        "2": "Weekend",
-        "3": "Flexible"
-      };
-
-      const chosen = schedules[text];
-
-      if (!chosen) {
-        await sendMessage(
-          from,
-          "Reply 1, 2 or 3."
-        );
-        return res.sendStatus(200);
-      }
-
-      const finalData = {
-        ...session.data,
-        schedule: chosen
-      };
-
-      // Save lead
-      await supabase
-        .from("leads")
+      const { data: newConversation } = await supabase
+        .from("conversations")
         .insert([
           {
-            organization_id:
-              "b2f35575-ff3f-4be4-85b3-c5ca90c35213",
-            name: "WhatsApp Lead",
-            phone: from,
-            interest: finalData.instrument,
-            status: "Qualified"
+            tenant_id: TENANT_ID,
+            contact_id: contact.id,
+            channel_id: channel.id,
+            current_node_id: firstNode.id,
+            status: "open"
           }
-        ]);
+        ])
+        .select()
+        .single();
 
-      // Delete session
+      conversation = newConversation;
+
+      await sendMessage(from, firstNode.content.question);
+
+      return res.sendStatus(200);
+    }
+
+    // SAVE CUSTOMER MESSAGE
+    await supabase.from("messages").insert([
+      {
+        conversation_id: conversation.id,
+        sender_type: "customer",
+        content: text
+      }
+    ]);
+
+    // CURRENT NODE
+    const { data: currentNode } = await supabase
+      .from("flow_nodes")
+      .select("*")
+      .eq("id", conversation.current_node_id)
+      .single();
+
+    // SAVE DATA TO CONTACT METADATA
+    const fieldName = currentNode.content?.field;
+
+    const updatedMetadata = {
+      ...(contact.metadata || {}),
+      [fieldName]: text
+    };
+
+    await supabase
+      .from("contacts")
+      .update({
+        metadata: updatedMetadata
+      })
+      .eq("id", contact.id);
+
+    // FIND NEXT NODE THROUGH EDGE
+    const { data: edge } = await supabase
+      .from("flow_edges")
+      .select("*")
+      .eq("source_node_id", currentNode.id)
+      .single();
+
+    // END FLOW
+    if (!edge) {
       await supabase
-        .from("whatsapp_sessions")
-        .delete()
-        .eq("phone", from);
+        .from("conversations")
+        .update({
+          status: "closed"
+        })
+        .eq("id", conversation.id);
+
+      await supabase.from("leads").insert([
+        {
+          tenant_id: TENANT_ID,
+          phone: from,
+          data: updatedMetadata,
+          status: "qualified",
+          source: "whatsapp"
+        }
+      ]);
 
       await sendMessage(
         from,
-`Great 🎵
-
-Book your FREE trial lesson here:
-
-https://calendar.app.google/YUyShyEXNa4DVoqcA`
+        "Thank you. Your information has been received successfully."
       );
 
       return res.sendStatus(200);
     }
+
+    // LOAD NEXT NODE
+    const { data: nextNode } = await supabase
+      .from("flow_nodes")
+      .select("*")
+      .eq("id", edge.target_node_id)
+      .single();
+
+    // UPDATE CONVERSATION POINTER
+    await supabase
+      .from("conversations")
+      .update({
+        current_node_id: nextNode.id
+      })
+      .eq("id", conversation.id);
+
+    // SAVE BOT MESSAGE
+    await supabase.from("messages").insert([
+      {
+        conversation_id: conversation.id,
+        sender_type: "bot",
+        content: nextNode.content.question
+      }
+    ]);
+
+    // SEND NEXT QUESTION
+    await sendMessage(from, nextNode.content.question);
 
     return res.sendStatus(200);
 
@@ -318,18 +238,21 @@ https://calendar.app.google/YUyShyEXNa4DVoqcA`
       "Webhook error:",
       error.response?.data || error.message
     );
+
     return res.sendStatus(500);
   }
 });
 
-// Send WhatsApp message
+
 async function sendMessage(to, body) {
   await axios.post(
     `https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`,
     {
       messaging_product: "whatsapp",
       to,
-      text: { body }
+      text: {
+        body
+      }
     },
     {
       headers: {
@@ -340,7 +263,7 @@ async function sendMessage(to, body) {
   );
 }
 
-// Start server
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
