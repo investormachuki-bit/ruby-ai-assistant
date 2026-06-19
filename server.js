@@ -19,7 +19,7 @@ const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const TENANT_ID = "8eaca035-c542-4ffb-bf0a-112442006376";
 
 
-// SEND WHATSAPP MESSAGE
+// SEND MESSAGE
 async function sendMessage(to, text, options = null) {
   try {
     let payload = {
@@ -73,7 +73,6 @@ app.get("/webhook", (req, res) => {
   const challenge = req.query["hub.challenge"];
 
   if (mode === "subscribe" && token === VERIFY_TOKEN) {
-    console.log("Webhook verified");
     return res.status(200).send(challenge);
   }
 
@@ -88,7 +87,6 @@ app.post("/webhook", async (req, res) => {
 
     console.log("Incoming:", JSON.stringify(value, null, 2));
 
-    // Ignore statuses
     if (value?.statuses && !value?.messages) {
       console.log("Status update only");
       return res.sendStatus(200);
@@ -101,21 +99,22 @@ app.post("/webhook", async (req, res) => {
     }
 
     const from = incomingMessage.from;
+
     let text = "";
 
-if (incomingMessage.type === "text") {
-  text = incomingMessage.text?.body?.trim();
-}
+    if (incomingMessage.type === "text") {
+      text = incomingMessage.text?.body?.trim();
+    }
 
-if (incomingMessage.type === "interactive") {
-  text = incomingMessage.interactive?.button_reply?.title?.trim();
-}
+    if (incomingMessage.type === "interactive") {
+      text = incomingMessage.interactive?.button_reply?.title?.trim();
+    }
 
     console.log("FROM:", from);
     console.log("TEXT:", text);
 
 
-    // FIND SESSION
+    // FIND ACTIVE SESSION
     const { data: session } = await supabase
       .from("conversation_sessions")
       .select("*")
@@ -123,7 +122,7 @@ if (incomingMessage.type === "interactive") {
       .maybeSingle();
 
 
-    // START FLOW
+    // START NEW FLOW
     if (!session) {
       const { data: flow } = await supabase
         .from("flows")
@@ -132,17 +131,29 @@ if (incomingMessage.type === "interactive") {
         .eq("trigger_type", "keyword")
         .eq("trigger_value", text.toLowerCase())
         .eq("is_active", true)
-        .single();
+        .maybeSingle();
 
+      // PHASE C — KNOWLEDGE BASE FALLBACK
       if (!flow) {
-        await sendMessage(
-          from,
-          "No active flow found. Please type HI to begin."
-        );
+        const { data: kb } = await supabase
+          .from("knowledge_base")
+          .select("*")
+          .ilike("question", `%${text}%`)
+          .maybeSingle();
+
+        if (kb) {
+          await sendMessage(from, kb.answer);
+        } else {
+          await sendMessage(
+            from,
+            "I couldn't find an answer. Type HI to start a flow."
+          );
+        }
+
         return res.sendStatus(200);
       }
 
-      // GET FIRST NODE
+      // FIRST NODE
       const { data: firstNode } = await supabase
         .from("flow_nodes")
         .select("*")
@@ -159,13 +170,17 @@ if (incomingMessage.type === "interactive") {
         status: "active"
       });
 
-      await sendMessage(from, firstNode.content.text);
+      await sendMessage(
+        from,
+        firstNode.content.text,
+        firstNode.options
+      );
 
       return res.sendStatus(200);
     }
 
 
-    // SESSION COMPLETE
+    // COMPLETED SESSION
     if (session.status === "completed") {
       await sendMessage(
         from,
@@ -175,7 +190,7 @@ if (incomingMessage.type === "interactive") {
     }
 
 
-    // GET CURRENT NODE
+    // CURRENT NODE
     const { data: currentNode } = await supabase
       .from("flow_nodes")
       .select("*")
@@ -183,53 +198,53 @@ if (incomingMessage.type === "interactive") {
       .single();
 
 
-    // SAVE USER RESPONSE
+    // SAVE ANSWER
     const updatedData = {
       ...(session.collected_data || {}),
       [currentNode.title]: text
     };
 
 
-    // FIND NEXT EDGE
+    // GET EDGES
     const { data: edges } = await supabase
-  .from("flow_edges")
-  .select("*")
-  .eq("source_node_id", currentNode.id);
+      .from("flow_edges")
+      .select("*")
+      .eq("source_node_id", currentNode.id);
 
-let selectedEdge = null;
+    let selectedEdge = null;
 
-for (const edge of edges) {
-  const operator = edge.condition_operator;
-  const value = edge.condition_value;
+    for (const edge of edges) {
+      const operator = edge.condition_operator;
+      const value = edge.condition_value;
 
-  if (!operator || operator === "default") {
-    selectedEdge = edge;
-    continue;
-  }
+      if (!operator || operator === "default") {
+        selectedEdge = edge;
+        continue;
+      }
 
-  if (operator === "equals" && text.toLowerCase() === value.toLowerCase()) {
-    selectedEdge = edge;
-    break;
-  }
+      if (operator === "equals" && text.toLowerCase() === value.toLowerCase()) {
+        selectedEdge = edge;
+        break;
+      }
 
-  if (operator === "contains" && text.toLowerCase().includes(value.toLowerCase())) {
-    selectedEdge = edge;
-    break;
-  }
+      if (operator === "contains" && text.toLowerCase().includes(value.toLowerCase())) {
+        selectedEdge = edge;
+        break;
+      }
 
-  if (operator === "greater_than" && Number(text) > Number(value)) {
-    selectedEdge = edge;
-    break;
-  }
+      if (operator === "greater_than" && Number(text) > Number(value)) {
+        selectedEdge = edge;
+        break;
+      }
 
-  if (operator === "less_than" && Number(text) < Number(value)) {
-    selectedEdge = edge;
-    break;
-  }
-}
+      if (operator === "less_than" && Number(text) < Number(value)) {
+        selectedEdge = edge;
+        break;
+      }
+    }
 
 
-    // END FLOW
+    // END IF NO EDGE
     if (!selectedEdge) {
       await supabase
         .from("conversation_sessions")
@@ -248,7 +263,7 @@ for (const edge of edges) {
     }
 
 
-    // GET NEXT NODE
+    // NEXT NODE
     const { data: nextNode } = await supabase
       .from("flow_nodes")
       .select("*")
@@ -266,7 +281,7 @@ for (const edge of edges) {
       .eq("id", session.id);
 
 
-    // SAVE MESSAGES
+    // SAVE CHAT LOGS
     await supabase.from("messages").insert({
       conversation_id: session.id,
       role: "user",
@@ -280,8 +295,13 @@ for (const edge of edges) {
     });
 
 
-    // SEND NEXT MESSAGE
-    await sendMessage(from, nextNode.content.text);
+    // SEND NEXT NODE
+    await sendMessage(
+      from,
+      nextNode.content.text,
+      nextNode.options
+    );
+
 
     // FINAL NODE
     if (nextNode.type === "end") {
@@ -307,5 +327,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
-      
