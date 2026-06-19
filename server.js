@@ -71,10 +71,10 @@ app.post("/webhook", async (req, res) => {
     const value = req.body?.entry?.[0]?.changes?.[0]?.value;
 
     // Ignore statuses
-    if (value?.statuses) {
-      console.log("Status update only");
-      return res.sendStatus(200);
-    }
+    if (value?.statuses && !value?.messages) {
+  console.log("Status update only");
+  return res.sendStatus(200);
+}
 
     const incomingMessage = value?.messages?.[0];
 
