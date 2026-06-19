@@ -13,7 +13,7 @@ app.use(express.json());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Serve frontend files
+// Serve frontend
 app.use(express.static(path.join(__dirname, "public")));
 
 // Supabase
@@ -22,7 +22,7 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY
 );
 
-// ENV
+// Env
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
@@ -37,19 +37,7 @@ app.get("/crm", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "crm.html"));
 });
 
-// Privacy Policy (required by Meta)
-app.get("/privacy", (req, res) => {
-  res.send(`
-    <h1>Privacy Policy</h1>
-    <p>
-      Ruby AI respects your privacy. We collect only data needed for
-      customer communication, lesson booking, and service delivery.
-      We do not sell or share your data with third parties.
-    </p>
-  `);
-});
-
-// Webhook verify
+// Verify webhook
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
@@ -63,34 +51,42 @@ app.get("/webhook", (req, res) => {
   return res.sendStatus(403);
 });
 
-// Webhook receive
+// Receive webhook
 app.post("/webhook", async (req, res) => {
   try {
-    console.log("Incoming webhook:", JSON.stringify(req.body, null, 2));
+    console.log(
+      "Incoming webhook:",
+      JSON.stringify(req.body, null, 2)
+    );
 
     const value = req.body?.entry?.[0]?.changes?.[0]?.value;
-console.log("VALUE OBJECT:", JSON.stringify(value, null, 2));
-    
-    // Ignore statuses
-    if (value?.statuses && !value?.messages) {
-  console.log("Status update only");
-  return res.sendStatus(200);
-}
 
-    const incomingMessage = value?.messages?.[0];
+    console.log(
+      "VALUE OBJECT:",
+      JSON.stringify(value, null, 2)
+    );
 
-    if (!incomingMessage) {
-      console.log("No incoming message");
+    // Ignore status updates
+    if (value?.statuses) {
+      console.log("Status update only");
       return res.sendStatus(200);
     }
 
-    const from = incomingMessage.from;
-    const text = incomingMessage.text?.body?.trim().toLowerCase();
+    // Process messages
+    const message = value?.messages?.[0];
+
+    if (!message) {
+      console.log("No message found");
+      return res.sendStatus(200);
+    }
+
+    const from = message.from;
+    const text = message.text?.body?.trim().toLowerCase();
 
     console.log("FROM:", from);
     console.log("TEXT:", text);
 
-    // Check session
+    // Check existing session
     let { data: session } = await supabase
       .from("whatsapp_sessions")
       .select("*")
@@ -98,6 +94,8 @@ console.log("VALUE OBJECT:", JSON.stringify(value, null, 2));
       .single();
 
     console.log("SESSION:", session);
+    console.log("CURRENT STEP:", session?.step);
+    console.log("SESSION DATA:", session?.data);
 
     // New user
     if (!session) {
@@ -109,19 +107,22 @@ console.log("VALUE OBJECT:", JSON.stringify(value, null, 2));
         }
       ]);
 
-      await sendMessage(
-        from,
+      // Ignore Meta fake sender
+      if (from !== "16315551181") {
+        await sendMessage(
+          from,
 `Welcome to Sauti Tamu Music School 🎵
 
 Before we continue, are you located in Nairobi?
 
 Reply YES or NO.`
-      );
+        );
+      }
 
       return res.sendStatus(200);
     }
 
-    // Step 1: Location
+    // STEP 1: LOCATION
     if (session.step === "location") {
       if (text === "no") {
         await sendMessage(
@@ -154,7 +155,7 @@ Which instrument are you interested in?
       }
     }
 
-    // Step 2: Instrument
+    // STEP 2: INSTRUMENT
     if (session.step === "instrument") {
       const instruments = {
         "1": "Piano",
@@ -167,7 +168,10 @@ Which instrument are you interested in?
       const chosen = instruments[text];
 
       if (!chosen) {
-        await sendMessage(from, "Reply with 1, 2, 3, 4 or 5.");
+        await sendMessage(
+          from,
+          "Please reply with 1, 2, 3, 4 or 5."
+        );
         return res.sendStatus(200);
       }
 
@@ -193,17 +197,20 @@ Which instrument are you interested in?
       return res.sendStatus(200);
     }
 
-    // Step 3: Student type
+    // STEP 3: STUDENT TYPE
     if (session.step === "student_type") {
-      const studentType =
+      const type =
         text === "1"
           ? "Child"
           : text === "2"
           ? "Adult"
           : null;
 
-      if (!studentType) {
-        await sendMessage(from, "Reply 1 for Child or 2 for Adult.");
+      if (!type) {
+        await sendMessage(
+          from,
+          "Reply 1 for Child or 2 for Adult."
+        );
         return res.sendStatus(200);
       }
 
@@ -213,16 +220,20 @@ Which instrument are you interested in?
           step: "age",
           data: {
             ...session.data,
-            student_type: studentType
+            student_type: type
           }
         })
         .eq("phone", from);
 
-      await sendMessage(from, "How old is the student?");
+      await sendMessage(
+        from,
+        "How old is the student?"
+      );
+
       return res.sendStatus(200);
     }
 
-    // Step 4: Age
+    // STEP 4: AGE
     if (session.step === "age") {
       await supabase
         .from("whatsapp_sessions")
@@ -247,7 +258,7 @@ Which instrument are you interested in?
       return res.sendStatus(200);
     }
 
-    // Step 5: Schedule
+    // STEP 5: SCHEDULE
     if (session.step === "schedule") {
       const schedules = {
         "1": "Weekday",
@@ -258,7 +269,10 @@ Which instrument are you interested in?
       const chosen = schedules[text];
 
       if (!chosen) {
-        await sendMessage(from, "Reply 1, 2 or 3.");
+        await sendMessage(
+          from,
+          "Reply 1, 2 or 3."
+        );
         return res.sendStatus(200);
       }
 
@@ -270,7 +284,8 @@ Which instrument are you interested in?
       // Save lead
       await supabase.from("leads").insert([
         {
-          organization_id: "b2f35575-ff3f-4be4-85b3-c5ca90c35213",
+          organization_id:
+            "b2f35575-ff3f-4be4-85b3-c5ca90c35213",
           name: "WhatsApp Lead",
           phone: from,
           interest: finalData.instrument,
@@ -297,8 +312,12 @@ https://calendar.app.google/YUyShyEXNa4DVoqcA`
     }
 
     return res.sendStatus(200);
+
   } catch (error) {
-    console.log("Webhook error:", error.response?.data || error.message);
+    console.log(
+      "Webhook error:",
+      error.response?.data || error.message
+    );
     return res.sendStatus(500);
   }
 });
