@@ -13,10 +13,8 @@ app.use(express.json());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-
 // SERVE FRONTEND FILES
 app.use(express.static(path.join(__dirname, "public")));
-
 
 // SUPABASE
 const supabase = createClient(
@@ -24,24 +22,20 @@ const supabase = createClient(
     process.env.SUPABASE_ANON_KEY
 );
 
-
 // ENV VARIABLES
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
-
 
 // HOME ROUTE
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-
 // CRM ROUTE
 app.get("/crm", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "crm.html"));
 });
-
 
 // WEBHOOK VERIFY
 app.get("/webhook", (req, res) => {
@@ -60,7 +54,6 @@ app.get("/webhook", (req, res) => {
     return res.sendStatus(403);
 });
 
-
 // RECEIVE WHATSAPP
 app.post("/webhook", async (req, res) => {
     try {
@@ -77,53 +70,229 @@ app.post("/webhook", async (req, res) => {
         }
 
         const from = message.from;
-        const text = message.text?.body?.trim();
+        const text = message.text?.body?.trim().toLowerCase();
 
-        // SAVE LEAD
-        const { error } = await supabase
-            .from("leads")
-            .insert([
-                {
-                    organization_id:
-                        "b2f35575-ff3f-4be4-85b3-c5ca90c35213",
-                    name: "WhatsApp Lead",
-                    phone: from,
-                    interest: text,
-                    status: "New"
-                }
-            ]);
+        // CHECK EXISTING SESSION
+        let { data: session } = await supabase
+            .from("whatsapp_sessions")
+            .select("*")
+            .eq("phone", from)
+            .single();
 
-        if (error) {
-            console.log(
-                "Supabase insert error:",
-                error.message
-            );
-        }
+        // NEW USER
+        if (!session) {
+            await supabase
+                .from("whatsapp_sessions")
+                .insert([
+                    {
+                        phone: from,
+                        step: "location",
+                        data: {}
+                    }
+                ]);
 
-        // SEND REPLY
-        await axios.post(
-            `https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`,
-            {
-                messaging_product: "whatsapp",
-                to: from,
-                text: {
-                    body:
+            await sendMessage(
+                from,
 `Welcome to Sauti Tamu Music School 🎵
 
 Before we continue, are you located in Nairobi?
 
 Reply YES or NO.`
-                }
-            },
-            {
-                headers: {
-                    Authorization:
-                        `Bearer ${WHATSAPP_TOKEN}`,
-                    "Content-Type":
-                        "application/json"
-                }
+            );
+
+            return res.sendStatus(200);
+        }
+
+        // STEP 1: LOCATION
+        if (session.step === "location") {
+            if (text === "no") {
+                await sendMessage(
+                    from,
+"Currently we only serve Nairobi clients. Thank you."
+                );
+                return res.sendStatus(200);
             }
-        );
+
+            if (text === "yes") {
+                await supabase
+                    .from("whatsapp_sessions")
+                    .update({ step: "instrument" })
+                    .eq("phone", from);
+
+                await sendMessage(
+                    from,
+`Great 🎵
+
+Which instrument are you interested in?
+
+1. Piano
+2. Guitar
+3. Violin
+4. Drums
+5. Voice`
+                );
+
+                return res.sendStatus(200);
+            }
+        }
+
+        // STEP 2: INSTRUMENT
+        if (session.step === "instrument") {
+            const instruments = {
+                "1": "Piano",
+                "2": "Guitar",
+                "3": "Violin",
+                "4": "Drums",
+                "5": "Voice"
+            };
+
+            const chosen = instruments[text];
+
+            if (!chosen) {
+                await sendMessage(
+                    from,
+"Please reply with 1, 2, 3, 4 or 5."
+                );
+                return res.sendStatus(200);
+            }
+
+            await supabase
+                .from("whatsapp_sessions")
+                .update({
+                    step: "student_type",
+                    data: {
+                        ...session.data,
+                        instrument: chosen
+                    }
+                })
+                .eq("phone", from);
+
+            await sendMessage(
+                from,
+`Who is the student?
+
+1. Child
+2. Adult`
+            );
+
+            return res.sendStatus(200);
+        }
+
+        // STEP 3: STUDENT TYPE
+        if (session.step === "student_type") {
+            const type =
+                text === "1"
+                    ? "Child"
+                    : text === "2"
+                    ? "Adult"
+                    : null;
+
+            if (!type) {
+                await sendMessage(
+                    from,
+"Reply 1 for Child or 2 for Adult."
+                );
+                return res.sendStatus(200);
+            }
+
+            await supabase
+                .from("whatsapp_sessions")
+                .update({
+                    step: "age",
+                    data: {
+                        ...session.data,
+                        student_type: type
+                    }
+                })
+                .eq("phone", from);
+
+            await sendMessage(
+                from,
+"How old is the student?"
+            );
+
+            return res.sendStatus(200);
+        }
+
+        // STEP 4: AGE
+        if (session.step === "age") {
+            await supabase
+                .from("whatsapp_sessions")
+                .update({
+                    step: "schedule",
+                    data: {
+                        ...session.data,
+                        age: text
+                    }
+                })
+                .eq("phone", from);
+
+            await sendMessage(
+                from,
+`Preferred lesson time?
+
+1. Weekday
+2. Weekend
+3. Flexible`
+            );
+
+            return res.sendStatus(200);
+        }
+
+        // STEP 5: SCHEDULE
+        if (session.step === "schedule") {
+            const schedules = {
+                "1": "Weekday",
+                "2": "Weekend",
+                "3": "Flexible"
+            };
+
+            const chosen = schedules[text];
+
+            if (!chosen) {
+                await sendMessage(
+                    from,
+"Reply 1, 2 or 3."
+                );
+                return res.sendStatus(200);
+            }
+
+            const finalData = {
+                ...session.data,
+                schedule: chosen
+            };
+
+            // SAVE FINAL LEAD
+            await supabase
+                .from("leads")
+                .insert([
+                    {
+                        organization_id:
+                            "b2f35575-ff3f-4be4-85b3-c5ca90c35213",
+                        name: "WhatsApp Lead",
+                        phone: from,
+                        interest: finalData.instrument,
+                        status: "Qualified"
+                    }
+                ]);
+
+            // DELETE SESSION
+            await supabase
+                .from("whatsapp_sessions")
+                .delete()
+                .eq("phone", from);
+
+            await sendMessage(
+                from,
+`Great 🎵
+
+Book your FREE trial lesson here:
+
+https://calendar.app.google/YUyShyEXNa4DVoqcA`
+            );
+
+            return res.sendStatus(200);
+        }
 
         return res.sendStatus(200);
 
@@ -137,12 +306,27 @@ Reply YES or NO.`
     }
 });
 
+// HELPER FUNCTION
+async function sendMessage(to, body) {
+    await axios.post(
+        `https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`,
+        {
+            messaging_product: "whatsapp",
+            to,
+            text: { body }
+        },
+        {
+            headers: {
+                Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+                "Content-Type": "application/json"
+            }
+        }
+    );
+}
 
 // START SERVER
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-    console.log(
-        `Server running on port ${PORT}`
-    );
+    console.log(`Server running on port ${PORT}`);
 });
