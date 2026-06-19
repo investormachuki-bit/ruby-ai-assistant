@@ -62,10 +62,19 @@ app.post("/webhook", async (req, res) => {
             JSON.stringify(req.body, null, 2)
         );
 
-        const value =
-    req.body?.entry?.[0]?.changes?.[0]?.value;
+        const change = req.body?.entry?.[0]?.changes?.[0]?.value;
 
-if (!value?.messages) {
+// ignore delivery/read statuses
+if (change?.statuses) {
+    console.log("Status update only");
+    return res.sendStatus(200);
+}
+
+// process real messages
+const message = change?.messages?.[0];
+
+if (!message) {
+    console.log("No message found");
     return res.sendStatus(200);
 }
 
