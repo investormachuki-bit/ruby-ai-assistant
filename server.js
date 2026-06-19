@@ -159,11 +159,42 @@ app.post("/webhook", async (req, res) => {
 
 
     // FIND NEXT EDGE
-    const { data: edge } = await supabase
-      .from("flow_edges")
-      .select("*")
-      .eq("source_node_id", currentNode.id)
-      .single();
+    const { data: edges } = await supabase
+  .from("flow_edges")
+  .select("*")
+  .eq("source_node_id", currentNode.id);
+
+let selectedEdge = null;
+
+for (const edge of edges) {
+  const operator = edge.condition_operator;
+  const value = edge.condition_value;
+
+  if (!operator || operator === "default") {
+    selectedEdge = edge;
+    continue;
+  }
+
+  if (operator === "equals" && text.toLowerCase() === value.toLowerCase()) {
+    selectedEdge = edge;
+    break;
+  }
+
+  if (operator === "contains" && text.toLowerCase().includes(value.toLowerCase())) {
+    selectedEdge = edge;
+    break;
+  }
+
+  if (operator === "greater_than" && Number(text) > Number(value)) {
+    selectedEdge = edge;
+    break;
+  }
+
+  if (operator === "less_than" && Number(text) < Number(value)) {
+    selectedEdge = edge;
+    break;
+  }
+}
 
 
     // END FLOW
