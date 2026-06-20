@@ -129,7 +129,7 @@ app.post("/webhook", async (req, res) => {
         .select("*")
         .eq("tenant_id", TENANT_ID)
         .eq("trigger_type", "keyword")
-        .eq("trigger_value", text.toLowerCase())
+        .ilike("trigger_value", text.trim())
         .eq("is_active", true)
         .maybeSingle();
 
