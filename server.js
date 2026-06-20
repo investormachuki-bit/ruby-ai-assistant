@@ -172,12 +172,43 @@ app.post("/webhook", async (req, res) => {
       });
 
       await sendMessage(
-        from,
-        firstNode.content.text,
-        firstNode.options
-      );
+  from,
+  firstNode.content.text,
+  firstNode.options
+);
 
-      return res.sendStatus(200);
+// AUTO MOVE if message node
+if (firstNode.type === "message") {
+  const { data: nextEdge } = await supabase
+    .from("flow_edges")
+    .select("*")
+    .eq("source_node_id", firstNode.id)
+    .limit(1)
+    .single();
+
+  if (nextEdge) {
+    const { data: nextNode } = await supabase
+      .from("flow_nodes")
+      .select("*")
+      .eq("id", nextEdge.target_node_id)
+      .single();
+
+    await supabase
+      .from("conversation_sessions")
+      .update({
+        current_node_id: nextNode.id
+      })
+      .eq("phone", from);
+
+    await sendMessage(
+      from,
+      nextNode.content.text,
+      nextNode.options
+    );
+  }
+}
+
+return res.sendStatus(200);
     }
 
 
