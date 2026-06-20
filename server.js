@@ -131,7 +131,8 @@ app.post("/webhook", async (req, res) => {
         .eq("trigger_type", "keyword")
         .ilike("trigger_value", text.trim())
         .eq("is_active", true)
-        .maybeSingle();
+        .limit(1)
+.single();
 
       // PHASE C — KNOWLEDGE BASE FALLBACK
       if (!flow) {
