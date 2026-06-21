@@ -1,77 +1,43 @@
-const { ReactFlow, MiniMap, Controls, Background, addEdge } = window.ReactFlow;
-
 let nodes = [];
-let edges = [];
-let nodeId = 1;
+let count = 1;
+
+const app = document.getElementById("app");
+
+function render() {
+  app.innerHTML = "";
+
+  nodes.forEach((node) => {
+    const div = document.createElement("div");
+    div.innerText = node.label;
+    div.style.padding = "15px";
+    div.style.margin = "10px";
+    div.style.border = "2px solid #333";
+    div.style.borderRadius = "8px";
+    div.style.width = "180px";
+    div.style.background = "#fff";
+    div.style.cursor = "pointer";
+
+    app.appendChild(div);
+  });
+}
 
 function addNode(type) {
   nodes.push({
-    id: `${nodeId}`,
-    type: "default",
-    position: {
-      x: 100 + Math.random() * 300,
-      y: 100 + Math.random() * 400
-    },
-    data: {
-      label: `${type} ${nodeId}`
-    }
+    id: count,
+    type,
+    label: `${type} ${count}`,
   });
 
-  nodeId++;
-  renderFlow();
+  count++;
+  render();
 }
 
-function saveFlow() {
-  const flowData = {
-    nodes,
-    edges
-  };
+document.getElementById("addMessage").addEventListener("click", function () {
+  addNode("Message");
+});
 
-  console.log("Saved Flow:", flowData);
-  alert("Flow saved successfully!");
-}
+document.getElementById("addQuestion").addEventListener("click", function () {
+  addNode("Question");
+});
 
-function renderFlow() {
-  const container = document.getElementById("app");
-
-  ReactDOM.render(
-    React.createElement(
-      ReactFlow,
-      {
-        nodes,
-        edges,
-
-        onNodesChange: (changes) => {
-          changes.forEach((change) => {
-            if (change.type === "position" && change.position) {
-              nodes = nodes.map((node) =>
-                node.id === change.id
-                  ? {
-                      ...node,
-                      position: change.position
-                    }
-                  : node
-              );
-            }
-          });
-
-          renderFlow();
-        },
-
-        onConnect: (params) => {
-          edges = addEdge(params, edges);
-          renderFlow();
-        },
-
-        fitView: true
-      },
-
-      React.createElement(MiniMap),
-      React.createElement(Controls),
-      React.createElement(Background)
-    ),
-    container
-  );
-}
-
-renderFlow();
+render();
