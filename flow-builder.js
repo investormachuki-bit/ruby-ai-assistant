@@ -8,8 +8,8 @@ window.onload = function () {
   const addQuestionBtn = document.getElementById("addQuestion");
   const saveFlowBtn = document.getElementById("saveFlow");
 
-  const SUPABASE_URL = "YOUR_SUPABASE_URL";
-  const SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY";
+  const SUPABASE_URL = "https://osnrnrgnegqpbiknsgit.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zbnJucmduZWdxcGJpa25zZ2l0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2ODI2MTUsImV4cCI6MjA5NzI1ODYxNX0._zOqjvIhaRCwGHBpEY1q4guGxMmXOATFj4F4rEF-dYc";
 
   async function saveFlow() {
     const flowName = prompt("Enter Flow Name");
