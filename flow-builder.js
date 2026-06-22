@@ -1,5 +1,4 @@
 window.onload = function () {
-  alert("JS loaded");
   let nodes = [];
   let edges = [];
   let count = 1;
@@ -11,6 +10,7 @@ window.onload = function () {
 
   const SUPABASE_URL = "https://osnrnrgnegqpbiknsgit.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zbnJucmduZWdxcGJpa25zZ2l0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2ODI2MTUsImV4cCI6MjA5NzI1ODYxNX0._zOqjvIhaRCwGHBpEY1q4guGxMmXOATFj4F4rEF-dYc";
+
 
   async function saveFlow() {
     const flowName = prompt("Enter Flow Name");
@@ -36,7 +36,8 @@ window.onload = function () {
     if (res.ok) {
       alert("Flow saved successfully");
     } else {
-      alert("Failed to save flow");
+      const errorText = await res.text();
+      alert(errorText);
     }
   }
 
@@ -45,13 +46,25 @@ window.onload = function () {
 
     nodes.forEach((node) => {
       const div = document.createElement("div");
+
       div.innerText = node.label;
       div.style.padding = "15px";
       div.style.margin = "10px";
       div.style.border = "2px solid #333";
       div.style.borderRadius = "8px";
-      div.style.width = "180px";
+      div.style.width = "220px";
       div.style.background = "#fff";
+      div.style.cursor = "pointer";
+
+      // Edit node on click
+      div.onclick = function () {
+        const newText = prompt("Edit node text:", node.label);
+
+        if (newText && newText.trim() !== "") {
+          node.label = newText;
+          render();
+        }
+      };
 
       app.appendChild(div);
     });
@@ -82,3 +95,7 @@ window.onload = function () {
 
   render();
 };
+
+  const SUPABASE_URL = "https://osnrnrgnegqpbiknsgit.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zbnJucmduZWdxcGJpa25zZ2l0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2ODI2MTUsImV4cCI6MjA5NzI1ODYxNX0._zOqjvIhaRCwGHBpEY1q4guGxMmXOATFj4F4rEF-dYc";
+
