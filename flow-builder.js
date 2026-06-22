@@ -1,4 +1,5 @@
 window.onload = function () {
+  alert("JS loaded");
   let nodes = [];
   let edges = [];
   let count = 1;
