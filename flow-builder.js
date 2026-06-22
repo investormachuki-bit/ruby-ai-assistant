@@ -36,28 +36,44 @@ window.onload = function () {
       div.style.margin = "10px";
       div.style.border = "2px solid #333";
       div.style.borderRadius = "8px";
-      div.style.width = "250px";
+      div.style.width = "260px";
       div.style.background = getColor(node.type, node.id);
       div.style.cursor = "pointer";
 
-      // Single click = select + link
+      // Select node for linking
       div.onclick = function () {
         if (!selectedNode) {
           selectedNode = node.id;
         } else {
           if (selectedNode !== node.id) {
+            let condition = "";
+
+            const sourceNode = nodes.find(n => n.id === selectedNode);
+
+            if (
+              sourceNode &&
+              (sourceNode.type === "Question" ||
+               sourceNode.type === "Condition")
+            ) {
+              condition = prompt(
+                "Enter condition for this path (e.g yes/no/high/low):"
+              ) || "";
+            }
+
             edges.push({
               from: selectedNode,
-              to: node.id
+              to: node.id,
+              condition: condition
             });
           }
+
           selectedNode = null;
         }
 
         render();
       };
 
-      // Double click = edit
+      // Edit node
       div.ondblclick = function () {
         const newText = prompt("Edit node text:", node.label);
 
@@ -67,7 +83,7 @@ window.onload = function () {
         }
       };
 
-      // Long press = delete
+      // Delete node
       let pressTimer;
 
       div.onmousedown = function () {
@@ -108,7 +124,15 @@ window.onload = function () {
 
     edges.forEach((edge) => {
       const line = document.createElement("div");
-      line.innerText = `Node ${edge.from} → Node ${edge.to}`;
+
+      if (edge.condition) {
+        line.innerText =
+          `Node ${edge.from} → (${edge.condition}) → Node ${edge.to}`;
+      } else {
+        line.innerText =
+          `Node ${edge.from} → Node ${edge.to}`;
+      }
+
       line.style.margin = "5px 0";
       edgeBox.appendChild(line);
     });
@@ -194,30 +218,12 @@ window.onload = function () {
     }
   }
 
-  // Button bindings
-  addMessageBtn.onclick = function () {
-    addNode("Message");
-  };
-
-  addQuestionBtn.onclick = function () {
-    addNode("Question");
-  };
-
-  addConditionBtn.onclick = function () {
-    addNode("Condition");
-  };
-
-  addEndBtn.onclick = function () {
-    addNode("End");
-  };
-
-  saveFlowBtn.onclick = function () {
-    saveFlow();
-  };
-
-  loadFlowBtn.onclick = function () {
-    loadFlow();
-  };
+  addMessageBtn.onclick = () => addNode("Message");
+  addQuestionBtn.onclick = () => addNode("Question");
+  addConditionBtn.onclick = () => addNode("Condition");
+  addEndBtn.onclick = () => addNode("End");
+  saveFlowBtn.onclick = () => saveFlow();
+  loadFlowBtn.onclick = () => loadFlow();
 
   render();
 };
