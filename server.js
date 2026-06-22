@@ -109,10 +109,10 @@ if (!session) {
     .from("conversation_sessions")
     .insert([
       {
-        phone,
-        tenant_id,
-        current_step: 0
-      }
+  phone,
+  organization_id: tenant_id,
+  current_step: 0
+}
     ])
     .select()
     .single();
@@ -143,7 +143,7 @@ if (!session) {
     const { data: flow } = await supabase
       .from("flow_builders")
       .select("*")
-      .eq("tenant_id", tenant_id)
+      .eq("organization_id", tenant_id)
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
