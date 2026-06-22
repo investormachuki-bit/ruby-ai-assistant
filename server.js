@@ -141,12 +141,12 @@ if (!session) {
     LOAD FLOW
     */
     const { data: flow } = await supabase
-      .from("flow_builders")
-      .select("*")
-      .eq("organization_id", tenant_id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
+  .from("flow_builders")
+  .select("*")
+  .eq("tenant_id", tenant_id)
+  .order("created_at", { ascending: false })
+  .limit(1)
+  .single();
 
     if (!flow) {
       return res.json({
