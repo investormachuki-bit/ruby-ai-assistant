@@ -31,16 +31,25 @@ window.onload = function () {
     nodes.forEach((node) => {
       const div = document.createElement("div");
 
-      div.innerText = `${node.type}: ${node.label}`;
       div.style.padding = "15px";
       div.style.margin = "10px";
       div.style.border = "2px solid #333";
       div.style.borderRadius = "8px";
-      div.style.width = "260px";
+      div.style.width = "280px";
       div.style.background = getColor(node.type, node.id);
       div.style.cursor = "pointer";
 
-      // Select node for linking
+      let text = `${node.type}: ${node.label}`;
+
+      if (node.options && node.options.length > 0) {
+        text += "\nOptions:";
+        node.options.forEach((opt) => {
+          text += `\n- ${opt}`;
+        });
+      }
+
+      div.innerText = text;
+
       div.onclick = function () {
         if (!selectedNode) {
           selectedNode = node.id;
@@ -50,13 +59,9 @@ window.onload = function () {
 
             const sourceNode = nodes.find(n => n.id === selectedNode);
 
-            if (
-              sourceNode &&
-              (sourceNode.type === "Question" ||
-               sourceNode.type === "Condition")
-            ) {
+            if (sourceNode?.options?.length > 0) {
               condition = prompt(
-                "Enter condition for this path (e.g yes/no/high/low):"
+                `Choose option: ${sourceNode.options.join(", ")}`
               ) || "";
             }
 
@@ -73,67 +78,46 @@ window.onload = function () {
         render();
       };
 
-      // Edit node
       div.ondblclick = function () {
         const newText = prompt("Edit node text:", node.label);
 
-        if (newText && newText.trim() !== "") {
+        if (newText) {
           node.label = newText;
-          render();
         }
-      };
 
-      // Delete node
-      let pressTimer;
-
-      div.onmousedown = function () {
-        pressTimer = setTimeout(() => {
-          nodes = nodes.filter((n) => n.id !== node.id);
-
-          edges = edges.filter(
-            (e) => e.from !== node.id && e.to !== node.id
+        if (node.type === "Question") {
+          const optionsInput = prompt(
+            "Enter options separated by commas:",
+            node.options ? node.options.join(",") : ""
           );
 
-          render();
-        }, 1200);
-      };
+          node.options = optionsInput
+            ? optionsInput.split(",").map(o => o.trim())
+            : [];
+        }
 
-      div.onmouseup = function () {
-        clearTimeout(pressTimer);
+        render();
       };
 
       app.appendChild(div);
     });
 
-    // Render connections
     const edgeBox = document.createElement("div");
     edgeBox.style.marginTop = "30px";
     edgeBox.style.padding = "15px";
     edgeBox.style.background = "#f8f9fa";
-    edgeBox.style.borderTop = "2px solid #ddd";
 
-    const edgeTitle = document.createElement("h3");
-    edgeTitle.innerText = "Connections";
-    edgeBox.appendChild(edgeTitle);
-
-    if (edges.length === 0) {
-      const empty = document.createElement("div");
-      empty.innerText = "No connections yet";
-      edgeBox.appendChild(empty);
-    }
+    const title = document.createElement("h3");
+    title.innerText = "Connections";
+    edgeBox.appendChild(title);
 
     edges.forEach((edge) => {
       const line = document.createElement("div");
 
-      if (edge.condition) {
-        line.innerText =
-          `Node ${edge.from} → (${edge.condition}) → Node ${edge.to}`;
-      } else {
-        line.innerText =
-          `Node ${edge.from} → Node ${edge.to}`;
-      }
+      line.innerText = edge.condition
+        ? `${edge.from} → (${edge.condition}) → ${edge.to}`
+        : `${edge.from} → ${edge.to}`;
 
-      line.style.margin = "5px 0";
       edgeBox.appendChild(line);
     });
 
@@ -141,11 +125,17 @@ window.onload = function () {
   }
 
   function addNode(type) {
-    nodes.push({
+    const node = {
       id: count,
       type: type,
       label: `${type} ${count}`
-    });
+    };
+
+    if (type === "Question") {
+      node.options = [];
+    }
+
+    nodes.push(node);
 
     count++;
     render();
@@ -154,13 +144,11 @@ window.onload = function () {
   async function saveFlow() {
     const flowName = prompt("Enter Flow Name");
 
-    if (!flowName) return;
-
     const payload = {
       tenant_id: TENANT_ID,
       flow_name: flowName,
-      nodes: nodes,
-      edges: edges
+      nodes,
+      edges
     };
 
     const res = await fetch(`${SUPABASE_URL}/rest/v1/flow_builders`, {
@@ -175,17 +163,12 @@ window.onload = function () {
     });
 
     if (res.ok) {
-      alert("Flow saved successfully");
-    } else {
-      const errorText = await res.text();
-      alert(errorText);
+      alert("Saved");
     }
   }
 
   async function loadFlow() {
-    const flowName = prompt("Enter Flow Name to Load");
-
-    if (!flowName) return;
+    const flowName = prompt("Enter Flow Name");
 
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/flow_builders?flow_name=eq.${flowName}`,
@@ -202,19 +185,9 @@ window.onload = function () {
     if (data.length > 0) {
       nodes = data[0].nodes || [];
       edges = data[0].edges || [];
-
-      count =
-        nodes.length > 0
-          ? Math.max(...nodes.map((n) => Number(n.id))) + 1
-          : 1;
-
-      selectedNode = null;
+      count = Math.max(...nodes.map(n => n.id)) + 1;
 
       render();
-
-      alert("Flow loaded successfully");
-    } else {
-      alert("Flow not found");
     }
   }
 
@@ -222,8 +195,8 @@ window.onload = function () {
   addQuestionBtn.onclick = () => addNode("Question");
   addConditionBtn.onclick = () => addNode("Condition");
   addEndBtn.onclick = () => addNode("End");
-  saveFlowBtn.onclick = () => saveFlow();
-  loadFlowBtn.onclick = () => loadFlow();
+  saveFlowBtn.onclick = saveFlow;
+  loadFlowBtn.onclick = loadFlow;
 
   render();
 };
