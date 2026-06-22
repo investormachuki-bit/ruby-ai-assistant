@@ -1,10 +1,10 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const { createClient } = require("@supabase/supabase-js");
+import express from "express";
+import bodyParser from "body-parser";
+import { createClient } from "@supabase/supabase-js";
 
 const app = express();
 app.use(bodyParser.json());
-app.use(express.static(__dirname));
+app.use(express.static("."));
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
