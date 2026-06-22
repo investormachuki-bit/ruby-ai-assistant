@@ -5,8 +5,11 @@ window.onload = function () {
   let selectedNode = null;
 
   const app = document.getElementById("app");
+
   const addMessageBtn = document.getElementById("addMessage");
   const addQuestionBtn = document.getElementById("addQuestion");
+  const addConditionBtn = document.getElementById("addCondition");
+  const addEndBtn = document.getElementById("addEnd");
   const saveFlowBtn = document.getElementById("saveFlow");
 
   const SUPABASE_URL = "https://osnrnrgnegqpbiknsgit.supabase.co";
@@ -34,7 +37,7 @@ window.onload = function () {
       div.style.background = getColor(node.type, node.id);
       div.style.cursor = "pointer";
 
-      // Single click = select/link
+      // Select + Link nodes
       div.onclick = function () {
         if (!selectedNode) {
           selectedNode = node.id;
@@ -47,22 +50,25 @@ window.onload = function () {
           }
           selectedNode = null;
         }
+
         render();
       };
 
-      // Double click = edit
+      // Double click to edit
       div.ondblclick = function () {
         const newText = prompt("Edit node text:", node.label);
+
         if (newText && newText.trim() !== "") {
           node.label = newText;
           render();
         }
       };
 
-      // Long press = delete
+      // Long press delete
       let pressTimer;
+
       div.onmousedown = function () {
-        pressTimer = window.setTimeout(() => {
+        pressTimer = setTimeout(() => {
           nodes = nodes.filter((n) => n.id !== node.id);
           edges = edges.filter(
             (e) => e.from !== node.id && e.to !== node.id
@@ -78,7 +84,7 @@ window.onload = function () {
       app.appendChild(div);
     });
 
-    // Edge display
+    // Show connections
     const edgeBox = document.createElement("div");
     edgeBox.style.marginTop = "30px";
     edgeBox.style.padding = "10px";
@@ -138,12 +144,21 @@ window.onload = function () {
     }
   }
 
+  // Button actions
   addMessageBtn.onclick = function () {
     addNode("Message");
   };
 
   addQuestionBtn.onclick = function () {
     addNode("Question");
+  };
+
+  addConditionBtn.onclick = function () {
+    addNode("Condition");
+  };
+
+  addEndBtn.onclick = function () {
+    addNode("End");
   };
 
   saveFlowBtn.onclick = function () {
