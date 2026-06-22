@@ -101,23 +101,41 @@ app.post("/webhook", async (req, res) => {
       .single();
 
     /*
-    CREATE SESSION IF NONE
-    */
-    if (!session) {
-      const { data: newSession } = await supabase
-        .from("conversation_sessions")
-        .insert([
-          {
-            phone,
-            tenant_id,
-            current_step: 0
-          }
-        ])
-        .select()
-        .single();
+    /*
+CREATE SESSION IF NONE
+*/
+if (!session) {
+  const { data: newSession, error: sessionError } = await supabase
+    .from("conversation_sessions")
+    .insert([
+      {
+        phone,
+        tenant_id,
+        current_step: 0
+      }
+    ])
+    .select()
+    .single();
 
-      session = newSession;
-    }
+  if (sessionError) {
+    console.error("Session creation error:", sessionError);
+
+    return res.status(500).json({
+      error: sessionError.message
+    });
+  }
+
+  session = newSession;
+}
+
+/*
+SAFETY CHECK
+*/
+if (!session) {
+  return res.status(500).json({
+    error: "Session could not be created"
+  });
+}
 
     /*
     LOAD FLOW
